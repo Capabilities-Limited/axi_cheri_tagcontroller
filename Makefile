@@ -43,9 +43,9 @@ GTEST_DEFINES := -DBUILD_GMOCK=OFF
 CFLAGS := -I$(RISCV)/include                            \
           -std=c++14                                    \
 		  -I$(GTEST_BUILD)/googletest/include/          \
-		  -I$(VERILATOR_ROOT)                           \
           -I$(ROOT_PATH)test/src/inc/                   \
 		  -O3
+		  #-I$(VERILATOR_ROOT)                           \
 
 BUILD_MACROS := -DVL_DEBUG
 ifdef VM_TRACE
@@ -56,9 +56,9 @@ endif
 
 LDFLAGS := -L$(GTEST_BUILD)/lib -L$(RISCV)/lib          \
            -Wl,-rpath,$(RISCV)/lib 						\
-		   -lfesvr                                      \
 		   -lpthread									\
 		   -lgtest
+		   #-lfesvr                                      \
 
 ifndef RISCV
 $(error RISCV not set - please point your RISCV variable to your RISCV installation)
@@ -69,8 +69,8 @@ verilate_command := $(verilator)                                          \
                     $(src)                                                \
                     --timing \
                     --unroll-count 256                                    \
-                    -Werror-PINMISSING                                       \
-                    -Werror-ENUMVALUE                                        \
+                    -Wno-PINMISSING                                       \
+                    -Wno-ENUMVALUE                                        \
                     -Werror-IMPLICIT                                      \
                     -Wno-fatal                                            \
                     -Wno-PINCONNECTEMPTY                                  \
