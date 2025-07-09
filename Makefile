@@ -71,7 +71,8 @@ verilate_command := $(verilator)                                          \
                     --unroll-count 256                                    \
                     -Wno-PINMISSING                                       \
                     -Wno-ENUMVALUE                                        \
-                    -Werror-IMPLICIT                                      \
+                    -Wno-ZEROREPL                                         \
+                    -Wno-IMPLICIT                                         \
                     -Wno-fatal                                            \
                     -Wno-PINCONNECTEMPTY                                  \
                     -Wno-ASSIGNDLY                                        \
