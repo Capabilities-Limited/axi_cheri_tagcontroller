@@ -173,7 +173,6 @@ module axi_tagctrl_top #(
       tagc_cfg: LLC_Cfg
   };
 
-
   typedef struct packed {
     // AXI4+ATOP specific descriptor signals
     axi_slv_id_t a_x_id;  // AXI ID from slave port
@@ -361,6 +360,41 @@ module axi_tagctrl_top #(
     cached_addr_rule.end_addr   = cached_end_addr_i;
   end
 
+  // wrapped HPDCache instance to back tag requests
+  hpdcache_tag_wrapper #(
+    .tag_req_t(tagc_desc_t),
+    .tag_w_data_req_t(tagc_oup_t),
+    .tag_w_resp_t(slv_b_chan_t),
+    .tag_r_resp_t(tagc_inp_t),
+    .mem_req_t(slv_req_t),
+    .mem_resp_t(slv_resp_t)
+  ) i_hpdcache_tag_wrapper (
+    .clk_i,
+    .rst_ni,
+
+    // incoming tag request descriptor
+    .tag_req_valid_i(spill_valid),
+    .tag_req_ready_o(spill_ready),
+    .tag_req_i(spill_desc),
+    // incoming write data
+    .tag_w_data_req_valid_i(tagc_w_oup_valid),
+    .tag_w_data_req_ready_o(tagc_w_oup_ready),
+    .tag_w_data_req_i(tagc_w_oup),
+    // outgoing write response
+    .tag_w_resp_valid_o(tagc_b_chan_valid),
+    .tag_w_resp_ready_i(tagc_b_chan_ready),
+    .tag_w_resp_o(tagc_b_chan),
+    // outgoing read response
+    .tag_r_resp_valid_o(tagc_r_inp_valid),
+    .tag_r_resp_ready_i(tagc_r_inp_ready),
+    .tag_r_resp_o(tagc_r_inp),
+
+    // tag store memory interfaces //
+    /////////////////////////////////
+    .mem_req_o(/*tagc_req*/),
+    .mem_resp_i(/*tagc_resp*/)
+  );
+
   // configuration, also has control over bypass logic and flush
   axi_tagctrl_config #(
       .Cfg          (Cfg),
@@ -379,7 +413,6 @@ module axi_tagctrl_top #(
       // Configuration registers
       .conf_regs_i,
       .conf_regs_o,
-      .spm_lock_o        (),
       .flushed_o         (flushed),
       .desc_o            (ax_desc[axi_llc_pkg::ConfigUnit]),
       .desc_valid_o      (ax_desc_valid[axi_llc_pkg::ConfigUnit]),
