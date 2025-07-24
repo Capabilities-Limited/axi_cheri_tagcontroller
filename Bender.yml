@@ -24,7 +24,8 @@ sources:
   - src/axi_tagctrl_pkg.sv
   - src/axi_tagctrl_data_way.sv
   - src/axi_tagctrl_ways.sv
-  - src/hpdcache_tag_wrapper.sv
+  - src/hpdcache_wrapper.sv
+  - src/llc_cache_wrapper.sv
   # Level 1
   - src/axi_tagc_read_unit.sv
   - src/axi_tagc_write_unit.sv
