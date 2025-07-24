@@ -269,15 +269,13 @@ module axi_tagctrl_reg_wrap #(
       .AxiAddrWidth    (AxiAddrWidth),
       .AxiDataWidth    (AxiDataWidth),
       .AxiUserWidth    (AxiUserWidth),
-      .RegWidth        (32'd64),
       .conf_regs_d_t   (axi_llc_cfg_regs_d_t),
       .conf_regs_q_t   (axi_llc_cfg_regs_q_t),
       .slv_req_t       (slv_req_t),
       .slv_resp_t      (slv_resp_t),
       .mst_req_t       (mst_req_t),
       .mst_resp_t      (mst_resp_t),
-      .rule_full_t     (rule_full_t),
-      .PrintSramCfg    (PrintSramCfg)
+      .rule_full_t     (rule_full_t)
   ) i_axi_tagctrl_top_raw (
       .clk_i,
       .rst_ni,
@@ -286,9 +284,6 @@ module axi_tagctrl_reg_wrap #(
       .slv_resp_o,
       .mst_req_o,
       .mst_resp_i,
-
-      .conf_regs_i(config_regs_q),
-      .conf_regs_o(config_regs_d),
 
       .cached_start_addr_i,
       .cached_end_addr_i
