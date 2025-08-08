@@ -175,7 +175,7 @@ module hpdcache_wrapper #(
     req.wdata = 0; // read req, no data
     req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
     req.be = 0; // read req, no byte enable
-    req.size = desc.a_x_size;
+    req.size = 0;
     req.sid = 0; // read requestor port idx
     req.tid = desc.a_x_id;
     req.need_rsp = 1'b1;
@@ -220,7 +220,7 @@ module hpdcache_wrapper #(
     req.wdata = wdata.data;
     req.op = hpdcache_pkg::HPDCACHE_REQ_STORE;
     req.be = wdata.bit_en; // XXX TODO verify what to do with be Vs bit_en
-    req.size = desc.a_x_size;
+    req.size = 0;
     req.sid = 1; // write requestor port idx
     req.tid = desc.a_x_id;
     req.need_rsp = 1'b1;
