@@ -287,7 +287,7 @@ module hpdcache_wrapper #(
     .ar_chan_t(axi_ar_t),
     .r_chan_t(axi_r_t)
   ) i_hpdcache_mem_to_axi_read (
-    .req_ready_o(mem_resp_read_ready),
+    .req_ready_o(mem_req_read_ready),
     .req_valid_i(mem_req_read_valid),
     .req_i(mem_req_read),
     .resp_ready_i(mem_resp_read_ready),
