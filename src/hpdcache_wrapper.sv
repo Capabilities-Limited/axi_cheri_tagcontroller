@@ -65,7 +65,7 @@ module hpdcache_wrapper #(
     userCfg.sets = 64;
     userCfg.ways = 8;
     userCfg.clWords = 512;
-    userCfg.reqWords = 4;
+    userCfg.reqWords = 8;
     userCfg.reqTransIdWidth = 6;
     userCfg.reqSrcIdWidth = 2;  // Up to 4 requesters
     userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_PLRU;
@@ -90,8 +90,9 @@ module hpdcache_wrapper #(
     userCfg.flushEntries = 4;
     userCfg.flushFifoDepth = 2;
     userCfg.memAddrWidth = 64;
+    //userCfg.memIdWidth = AxiIdWidth + 1;
     userCfg.memIdWidth = 4;
-    userCfg.memDataWidth = 512;
+    userCfg.memDataWidth = 64;
     userCfg.wtEn = 1'b0;
     userCfg.wbEn = 1'b1;
     userCfg.lowLatency = 1'b0;
