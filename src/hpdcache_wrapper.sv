@@ -81,7 +81,8 @@ module hpdcache_wrapper #(
     userCfg.mshrUseRegbank = 1;
     userCfg.cbufEntries = 8;
     userCfg.refillCoreRspFeedthrough = 1'b1;
-    userCfg.refillFifoDepth = 2;
+    //userCfg.refillFifoDepth = 2;
+    userCfg.refillFifoDepth = 16;
     userCfg.wbufDirEntries = 8;
     userCfg.wbufDataEntries = 4;
     userCfg.wbufWords = 2;
