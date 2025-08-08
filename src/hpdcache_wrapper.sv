@@ -150,8 +150,8 @@ module hpdcache_wrapper #(
     // make sure we are receiving a read request
     assert(!desc.rw);
     // make sure we have a single flit transaction
-    assert(!desc.a_x_len == 0);
-    assert(!desc.x_last == 1'b1);
+    assert(desc.a_x_len == 0);
+    assert(desc.x_last == 1'b1);
     // TODO check remaining descriptor fields
     //axi_pkg::burst_t a_x_burst;  // AXI burst type
     //logic a_x_lock;  // AXI lock signal
@@ -195,8 +195,8 @@ module hpdcache_wrapper #(
     // make sure we are receiving a write request
     assert(desc.rw);
     // make sure we have a single flit transaction
-    assert(!desc.a_x_len == 0);
-    assert(!desc.x_last == 1'b1);
+    assert(desc.a_x_len == 0);
+    assert(desc.x_last == 1'b1);
     // TODO check remaining descriptor fields
     //axi_pkg::burst_t a_x_burst;  // AXI burst type
     //logic a_x_lock;  // AXI lock signal
