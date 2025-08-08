@@ -36,7 +36,8 @@
 #include <deque>
 #include <axi_types.h>
 
-#define MAX_NUM_REPS 1
+//#define MAX_NUM_REPS 1
+#define MAX_NUM_REPS 420
 
 static vluint64_t main_time = 0;
 static std::string dumpfolder = "/test/logs/";
@@ -129,7 +130,8 @@ public:
   {
     this->dut = dut;
     this->tb = tb;
-    srand(time(0));
+    //srand(time(0));
+    srand(0);
   }
 
   void reset_slave()
