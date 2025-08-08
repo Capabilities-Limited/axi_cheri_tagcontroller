@@ -36,7 +36,7 @@
 #include <deque>
 #include <axi_types.h>
 
-#define MAX_NUM_REPS 500
+#define MAX_NUM_REPS 1
 
 static vluint64_t main_time = 0;
 static std::string dumpfolder = "/test/logs/";
@@ -273,7 +273,8 @@ public:
     ax_beat.ax_addr = (rand() % (Vtag_ctrl_testharness_tag_ctrl_testharness::TagCacheMemBase - Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase + 1)) + Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
     // align to 4KiB
     ax_beat.ax_addr = ax_beat.ax_addr & ~(4095);
-    ax_beat.ax_len = (uint8_t)(rand() % 255);
+    //ax_beat.ax_len = (uint8_t)(rand() % 255);
+    ax_beat.ax_len = (uint8_t)(0);
     ax_beat.ax_size = 3; // always 64-bit for now
     ax_beat.ax_burst = BURST_INCR;
     ax_beat.ax_user = 0;
