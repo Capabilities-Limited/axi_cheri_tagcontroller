@@ -41,14 +41,14 @@ packages:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   hpdcache:
-    revision: b071dbd73c2090e9372b7dfcf74f192fe0b01757
+    revision: e26593251b12617ef6747cd30409a1332bc3099b
     version: null
     source:
       Git: https://github.com/Capabilities-Limited/cv-hpdcache.git
     dependencies: []
   register_interface:
-    revision: 5daa85d164cf6b54ad061ea1e4c6f3624556e467
-    version: 0.4.5
+    revision: 8e8c209ea559d3b54f45cf30fcce95ce70ff5e49
+    version: 0.4.6
     source:
       Git: https://github.com/pulp-platform/register_interface.git
     dependencies:
