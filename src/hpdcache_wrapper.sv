@@ -72,7 +72,7 @@ module hpdcache_wrapper #(
     userCfg.dataWaysPerRamWord = 4;
     userCfg.dataSetsPerRam = 128;
     userCfg.dataRamByteEnable = 1'b1; // XXX TODO check the 1'b0 option
-    userCfg.accessWords = 64;
+    userCfg.accessWords = 32;
     userCfg.mshrSets = 1;
     userCfg.mshrWays = 4;
     userCfg.mshrWaysPerRamWord = 2;
