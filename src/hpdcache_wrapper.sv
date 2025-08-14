@@ -5,6 +5,7 @@ module hpdcache_wrapper #(
     parameter type tag_data_req_t = logic,
     parameter type tag_write_resp_t = logic,
     parameter type tag_read_resp_t = logic,
+    parameter int unsigned cache_req_words = 64'd4,
     parameter int unsigned AxiIdWidth = 64'd6,
     parameter int unsigned AxiAddrWidth = 64'd64,
     parameter int unsigned AxiDataWidth = 64'd64,
@@ -65,7 +66,7 @@ module hpdcache_wrapper #(
     userCfg.sets = 128;
     userCfg.ways = 4;
     userCfg.clWords = 512;
-    userCfg.reqWords = 4;
+    userCfg.reqWords = cache_req_words;
     userCfg.reqTransIdWidth = 6;
     userCfg.reqSrcIdWidth = 2;  // Up to 4 requesters
     userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_PLRU;
