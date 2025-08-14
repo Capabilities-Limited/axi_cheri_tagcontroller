@@ -304,6 +304,7 @@ module axi_tagctrl_top #(
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
     .AxiUserWidth(AxiUserWidth),
+    .cache_req_words(4),
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t)
