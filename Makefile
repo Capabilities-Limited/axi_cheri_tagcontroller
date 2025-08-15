@@ -82,6 +82,7 @@ verilate_command := $(verilator)                                          \
                     -Wno-BLKANDNBLK                                       \
                     -Wno-style                                            \
                     $(if $(VM_TRACE),--trace --trace-structs,)            \
+                    $(if $(PULP_LLC),-DPULP_LLC,)                         \
                     -LDFLAGS "$(LDFLAGS)"                                 \
                     -CFLAGS "$(CFLAGS) $(BUILD_MACROS)"                   \
                     -Wall --cc ${TB_PATH}/hdl/$(MODULE)_testharness.sv    \
