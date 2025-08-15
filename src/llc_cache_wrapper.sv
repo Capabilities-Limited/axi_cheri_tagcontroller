@@ -115,6 +115,12 @@ module llc_cache_wrapper #(
     logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way which is locked
   } lock_t;
 
+  typedef logic [AxiCfg.SlvPortIdWidth-1:0] axi_slv_id_t;
+  typedef logic [AxiCfg.SlvPortIdWidth:0] axi_mst_id_t;
+  typedef logic [AxiCfg.DataWidthFull-1:0] axi_data_t;
+  typedef logic [(AxiCfg.DataWidthFull/8)-1:0] axi_strb_t;
+  typedef logic [AxiUserWidth-1:0] axi_user_t;
+
   // definitions of the miss counting struct
   typedef struct packed {
     axi_slv_id_t id;     // AXI id of the count operation
@@ -133,12 +139,6 @@ module llc_cache_wrapper #(
     axi_strb_t                                 strb;        // write enable (equals AXI strb)
     axi_data_t                                 bit_en;      // write enable (equals AXI strb)
   } way_inp_t;
-
-  typedef logic [AxiCfg.SlvPortIdWidth-1:0] axi_slv_id_t;
-  typedef logic [AxiCfg.SlvPortIdWidth:0] axi_mst_id_t;
-  typedef logic [AxiCfg.DataWidthFull-1:0] axi_data_t;
-  typedef logic [(AxiCfg.DataWidthFull/8)-1:0] axi_strb_t;
-  typedef logic [AxiUserWidth-1:0] axi_user_t;
 
   typedef struct packed {
     axi_llc_pkg::cache_unit_e cache_unit;  // which unit had the access
