@@ -14,7 +14,7 @@ TB_PATH    := $(ROOT_PATH)/test
 # bender version
 bender_tool    ?= bender
 # verilator version
-verilator      ?= /usr/local/bin/verilator
+verilator      ?= verilator
 # verible tool
 verible        ?= verible-verilog-format
 # source files
@@ -41,7 +41,7 @@ GTEST_DEFINES := -DBUILD_GMOCK=OFF
 
 #Verilator Flags
 CFLAGS := -I$(RISCV)/include                            \
-          -std=c++14                                    \
+          -std=c++17                                    \
 		  -I$(GTEST_BUILD)/googletest/include/          \
           -I$(ROOT_PATH)test/src/inc/                   \
 		  -O3
@@ -54,7 +54,7 @@ BUILD_MACROS += -DVM_TRACE
 VCD_DUMP ?= "$(VER_BUILD_DIR)dump.vcd"
 endif 
 
-LDFLAGS := -L$(GTEST_BUILD)/lib -L$(RISCV)/lib          \
+LDFLAGS := $(LDFLAGS) -L$(GTEST_BUILD)/lib -L$(RISCV)/lib          \
            -Wl,-rpath,$(RISCV)/lib 						\
 		   -lpthread									\
 		   -lgtest
