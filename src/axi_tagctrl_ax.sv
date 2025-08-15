@@ -102,9 +102,13 @@ module axi_tagctrl_ax #(
   assign tag_off = $unsigned(
       ax_chan_slv_i.addr - Cfg.DRAMMemBase
   ) >> $clog2(
+`ifdef PULP_LLC
       Cfg.tagc_cfg.BlockSize * (Cfg.CapSize / 8)
+`else
+      (Cfg.CapSize / 8)
+`endif
   );
-  assign tag_addr = Cfg.TagCacheMemBase + (tag_off << $clog2(Cfg.tagc_cfg.BlockSize / 8));
+  assign tag_addr = (tag_off << $clog2(Cfg.tagc_cfg.BlockSize / 8));
 
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
