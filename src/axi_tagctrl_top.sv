@@ -290,8 +290,7 @@ module axi_tagctrl_top #(
   logic tagctrl_isolate, tagctrl_isolated;
 
   // wrapped cache instance to back tag requests
-  `define HPDCACHE
-  `ifdef HPDCACHE
+  `ifndef PULP_LLC
   hpdcache_wrapper #(
   `else
   llc_cache_wrapper #(
@@ -304,11 +303,13 @@ module axi_tagctrl_top #(
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
     .AxiUserWidth(AxiUserWidth),
+    `ifndef PULP_LLC
     .cache_req_words(4),
+    `endif
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t)
-    `ifndef HPDCACHE
+    `ifdef PULP_LLC
     , .tagc_desc_t(tagc_desc_t)
     `endif
   ) i_tag_cache_wrapper (
