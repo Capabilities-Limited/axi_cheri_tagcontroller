@@ -74,7 +74,10 @@ module axi_tagctrl_ax #(
   // Used to compute the end addr (addr begin + len)
   addr_t addr_end;
   // Tag address offset to fetch
-  addr_t tag_addr, tag_hi_addr, tag_off;
+  addr_t tag_addr, tag_hi_addr;
+`ifdef PULP_LLC
+  addr_t tag_off;
+`endif
   // Used to compute the number of beats needed for the Tage Cache request
   axi_pkg::len_t tagc_desc_len;
   logic [$clog2(Cfg.tagc_cfg.BlockSize / 8)-1:0] tagc_blk_ind_begin, tagc_blk_ind_end;
@@ -99,16 +102,16 @@ module axi_tagctrl_ax #(
       Cfg.tagc_cfg.BlockSize/8
   )];
   assign tagc_desc_len = $unsigned(tagc_blk_ind_end - tagc_blk_ind_begin);
+`ifdef PULP_LLC
   assign tag_off = $unsigned(
       ax_chan_slv_i.addr - Cfg.DRAMMemBase
   ) >> $clog2(
-`ifdef PULP_LLC
       Cfg.tagc_cfg.BlockSize * (Cfg.CapSize / 8)
-`else
-      (Cfg.CapSize / 8)
-`endif
   );
   assign tag_addr = (tag_off << $clog2(Cfg.tagc_cfg.BlockSize / 8));
+`else
+  assign tag_addr = (ax_chan_slv_i.addr >> $clog2(Cfg.CapSize / 8));
+`endif
 
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
