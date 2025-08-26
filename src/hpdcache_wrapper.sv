@@ -194,6 +194,7 @@ module hpdcache_wrapper #(
   function automatic hpdcache_req_t write_req_to_hpdcache_req(tag_req_t desc, tag_data_req_t wdata);
 
     hpdcache_req_t req;
+    logic [$clog2($bits(wdata.data))-1:0] sel = desc.a_x_addr;
 
     // make sure we are receiving a write request
     //assert(desc.rw); // TODO only check if there is a valid request
@@ -218,9 +219,10 @@ module hpdcache_wrapper #(
 
     // prepare hpdcache req
     req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
-    req.wdata = wdata.data;
+    //req.wdata = wdata.data;
+    req.wdata = wdata.data >> sel;
     req.op = hpdcache_pkg::HPDCACHE_REQ_STORE;
-    req.be = wdata.bit_en; // XXX TODO verify what to do with be Vs bit_en
+    req.be = wdata.bit_en >> sel;
     req.size = 0;
     req.sid = 1; // write requestor port idx
     req.tid = desc.a_x_id;
