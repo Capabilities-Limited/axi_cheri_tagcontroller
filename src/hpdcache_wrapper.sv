@@ -101,7 +101,105 @@ module hpdcache_read_req_rsp_wrapper #(
 
 endmodule
 
+// Write req/rsp hpdcache to wrapper converter helper
+////////////////////////////////////////////////////////////////////////////////
+module hpdcache_write_req_rsp_wrapper #(
+    parameter hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = '0,
+    parameter type tag_req_t = logic,
+    parameter type tag_data_req_t = logic,
+    parameter type tag_write_resp_t = logic,
+    parameter type hpdcache_req_t = logic,
+    parameter type hpdcache_rsp_t = logic
+  ) (
+    input logic clk_i,
+    input logic rst_ni,
+
+    input logic write_req_valid_i,
+    output logic write_req_ready_o,
+    input tag_req_t write_req_i,
+
+    input logic write_data_req_valid_i,
+    output logic write_data_req_ready_o,
+    input tag_req_t write_data_req_i,
+
+    output logic hpdcache_write_req_valid_o,
+    input logic hpdcache_write_req_ready_i,
+    output hpdcache_req_t hpdcache_write_req_o,
+
+    output logic write_resp_valid_o,
+    output tag_write_resp_t write_resp_o,
+
+    input logic hpdcache_write_resp_valid_i,
+    input hpdcache_rsp_t hpdcache_write_resp_i
+  );
+
+  // convert write descriptor to hpdcache request
+  function automatic hpdcache_req_t write_req_to_hpdcache_req(tag_req_t desc, tag_data_req_t wdata);
+
+    hpdcache_req_t req;
+    logic [$clog2($bits(wdata.data))-1:0] sel = desc.a_x_addr;
+
+    // make sure we are receiving a write request
+    //assert(desc.rw); // TODO only check if there is a valid request
+    // make sure we have a single flit transaction
+    assert(desc.a_x_len == 0);
+    //assert(desc.x_last == 1'b1); // TODO only check if there is a valid request
+    // TODO check remaining descriptor fields
+    //axi_pkg::burst_t a_x_burst;  // AXI burst type
+    //logic a_x_lock;  // AXI lock signal
+    //axi_pkg::cache_t a_x_cache;  // AXI cache signal
+    //axi_pkg::prot_t a_x_prot;  // AXI protection signal
+    //axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
+    //logic x_last;  // Last descriptor of a burst
+    //// Cache specific descriptor signals
+    //logic spm;  // this descriptor targets a SPM region in the cache
+    //logic rw;  // this descriptor is a read:0 or write:1 access
+    //logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way we have to perform an operation on
+    //logic evict;  // evict what is standing in the line
+    //logic [Cfg.tagc_cfg.TagLength -1:0] evict_tag;  // tag for evicting a line
+    //logic refill;  // refill the cache line
+    //logic flush;  // flush this line, comes from config
+
+    // prepare hpdcache req
+    req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
+    //req.wdata = wdata.data;
+    req.wdata = wdata.data >> sel;
+    req.op = hpdcache_pkg::HPDCACHE_REQ_STORE;
+    req.be = wdata.bit_en >> sel;
+    req.size = 0;
+    req.sid = 1; // write requestor port idx
+    req.tid = desc.a_x_id;
+    req.need_rsp = 1'b1;
+    req.phys_indexed = 1'b1;
+    req.addr_tag = desc.a_x_addr[HPDcacheCfg.reqOffsetWidth +: HPDcacheCfg.tagWidth];
+    req.pma.uncacheable = 1'b0;
+    req.pma.io = 1'b0;
+    req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_WB;
+    //req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_WT;
+    return req;
+  endfunction
+
+  function automatic tag_write_resp_t hpdcache_write_rsp_to_tagctrl_write_rsp(hpdcache_rsp_t rsp);
+    tag_write_resp_t resp;
+    resp.id = rsp.tid;
+    resp.resp = (rsp.error || rsp.aborted) ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
+    resp.user = 1'b0; // unused
+    return resp;
+  endfunction
+
+  logic write_req_valid;
+  assign write_req_valid = write_req_valid_i & write_data_req_valid_i;
+  assign write_req_ready_o = write_req_valid && hpdcache_write_req_ready_i;
+  assign write_data_req_ready_o = write_req_valid && hpdcache_write_req_ready_i;
+  assign hpdcache_write_req_valid_o = write_req_valid;
+  assign hpdcache_write_req_o = write_req_to_hpdcache_req(write_req_i, write_data_req_i);
+  assign write_resp_valid_o = hpdcache_write_resp_valid_i;
+  assign write_resp_o = hpdcache_write_rsp_to_tagctrl_write_rsp(hpdcache_write_resp_i);
+
+endmodule
+
 // HPDCache wrapper itself
+////////////////////////////////////////////////////////////////////////////////
 module hpdcache_wrapper #(
     parameter type tag_req_t = logic,
     parameter type tag_data_req_t = logic,
@@ -244,63 +342,6 @@ module hpdcache_wrapper #(
   `HPDCACHE_TYPEDEF_MEM_RESP_W_T(hpdcache_mem_resp_w_t, hpdcache_mem_id_t);
   //  }}}
 
-  // tag controller <-> hpdcache converters
-  //////////////////////////////////////////////////////////////////////////////
-
-  // convert write descriptor to hpdcache request
-  function automatic hpdcache_req_t write_req_to_hpdcache_req(tag_req_t desc, tag_data_req_t wdata);
-
-    hpdcache_req_t req;
-    logic [$clog2($bits(wdata.data))-1:0] sel = desc.a_x_addr;
-
-    // make sure we are receiving a write request
-    //assert(desc.rw); // TODO only check if there is a valid request
-    // make sure we have a single flit transaction
-    assert(desc.a_x_len == 0);
-    //assert(desc.x_last == 1'b1); // TODO only check if there is a valid request
-    // TODO check remaining descriptor fields
-    //axi_pkg::burst_t a_x_burst;  // AXI burst type
-    //logic a_x_lock;  // AXI lock signal
-    //axi_pkg::cache_t a_x_cache;  // AXI cache signal
-    //axi_pkg::prot_t a_x_prot;  // AXI protection signal
-    //axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
-    //logic x_last;  // Last descriptor of a burst
-    //// Cache specific descriptor signals
-    //logic spm;  // this descriptor targets a SPM region in the cache
-    //logic rw;  // this descriptor is a read:0 or write:1 access
-    //logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way we have to perform an operation on
-    //logic evict;  // evict what is standing in the line
-    //logic [Cfg.tagc_cfg.TagLength -1:0] evict_tag;  // tag for evicting a line
-    //logic refill;  // refill the cache line
-    //logic flush;  // flush this line, comes from config
-
-    // prepare hpdcache req
-    req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
-    //req.wdata = wdata.data;
-    req.wdata = wdata.data >> sel;
-    req.op = hpdcache_pkg::HPDCACHE_REQ_STORE;
-    req.be = wdata.bit_en >> sel;
-    req.size = 0;
-    req.sid = 1; // write requestor port idx
-    req.tid = desc.a_x_id;
-    req.need_rsp = 1'b1;
-    req.phys_indexed = 1'b1;
-    req.addr_tag = desc.a_x_addr[HPDcacheCfg.reqOffsetWidth +: HPDcacheCfg.tagWidth];
-    req.pma.uncacheable = 1'b0;
-    req.pma.io = 1'b0;
-    req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_WB;
-    //req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_WT;
-    return req;
-  endfunction
-
-  function automatic tag_write_resp_t hpdcache_write_rsp_to_tagctrl_write_rsp(hpdcache_rsp_t rsp);
-    tag_write_resp_t resp;
-    resp.id = rsp.tid;
-    resp.resp = (rsp.error || rsp.aborted) ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
-    resp.user = 1'b0; // unused
-    return resp;
-  endfunction
-
   // hpdcache <-> mem converters
   //////////////////////////////////////////////////////////////////////////////
   /////////////////////////////
@@ -380,7 +421,9 @@ module hpdcache_wrapper #(
     .axi_b_ready_o(mem_req_o.b_ready)
   );
 
-  // connect the internal hpdcache instance
+  // tag controller <-> hpdcache converters
+  //////////////////////////////////////////////////////////////////////////////
+  // connect to the internal hpdcache instance
   //////////////////////////////////////////////////////////////////////////////
 
   // cache requestors req and resp
@@ -392,7 +435,7 @@ module hpdcache_wrapper #(
   logic cache_rsp_valid [HPDcacheCfg.u.nRequesters];
   hpdcache_rsp_t cache_rsp [HPDcacheCfg.u.nRequesters];
 
-  // 0 reads
+  // requestor 0: reads
   hpdcache_read_req_rsp_wrapper #(
     .HPDcacheCfg(HPDcacheCfg),
     .tag_req_t(tag_req_t),
@@ -410,17 +453,29 @@ module hpdcache_wrapper #(
     .hpdcache_read_resp_i(cache_rsp[0])
   );
 
-  // 1 writes
-
-  logic write_req_valid;
-  assign write_req_valid = write_req_valid_i & write_data_req_valid_i;
-  assign cache_req_valid[1] = write_req_valid;
-  assign write_req_ready_o = write_req_valid && cache_req_ready[1];
-  assign write_data_req_ready_o = write_req_valid && cache_req_ready[1];
-  assign cache_req[1] = write_req_to_hpdcache_req(write_req_i, write_data_req_i);
-
-  assign write_resp_valid_o = cache_rsp_valid[1];
-  assign write_resp_o = hpdcache_write_rsp_to_tagctrl_write_rsp(cache_rsp[1]);
+  // requestor 1: writes
+  hpdcache_write_req_rsp_wrapper #(
+    .HPDcacheCfg(HPDcacheCfg),
+    .tag_req_t(tag_req_t),
+    .tag_data_req_t(tag_data_req_t),
+    .tag_write_resp_t(tag_write_resp_t),
+    .hpdcache_req_t(hpdcache_req_t),
+    .hpdcache_rsp_t(hpdcache_rsp_t)
+  ) write_wrapper_i (
+    .clk_i, .rst_ni,
+    .write_req_valid_i,
+    .write_req_ready_o,
+    .write_req_i,
+    .write_data_req_valid_i,
+    .write_data_req_ready_o,
+    .write_data_req_i,
+    .hpdcache_write_req_valid_o(cache_req_valid[1]),
+    .hpdcache_write_req_ready_i(cache_req_ready[1]),
+    .hpdcache_write_req_o(cache_req[1]),
+    .write_resp_valid_o, .write_resp_o,
+    .hpdcache_write_resp_valid_i(cache_rsp_valid[1]),
+    .hpdcache_write_resp_i(cache_rsp[1])
+  );
 
   // internal hpdcache instance
   //////////////////////////////////////////////////////////////////////////////
