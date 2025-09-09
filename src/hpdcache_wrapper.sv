@@ -137,7 +137,10 @@ module hpdcache_write_req_rsp_wrapper #(
   function automatic hpdcache_req_t write_req_to_hpdcache_req(tag_req_t desc, tag_data_req_t wdata);
 
     hpdcache_req_t req;
-    logic [$clog2($bits(wdata.data))-1:0] sel = desc.a_x_addr;
+
+    localparam int hi = $clog2($bits(wdata.data)) - 1;
+    localparam int lo = $clog2(HPDcacheCfg.reqDataBytes);
+    logic [hi:0] sel = {write_req_i.a_x_addr[hi:lo], {lo{1'b0}}};
 
     // make sure we are receiving a write request
     //assert(desc.rw); // TODO only check if there is a valid request
@@ -162,7 +165,6 @@ module hpdcache_write_req_rsp_wrapper #(
 
     // prepare hpdcache req
     req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
-    //req.wdata = wdata.data;
     req.wdata = wdata.data >> sel;
     req.op = hpdcache_pkg::HPDCACHE_REQ_STORE;
     req.be = wdata.bit_en >> sel;
