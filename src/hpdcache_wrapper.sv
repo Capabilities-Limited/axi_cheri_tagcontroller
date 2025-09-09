@@ -541,17 +541,17 @@ module hpdcache_wrapper #(
       .wbuf_empty_o(),
 
       // events unused
-      //.evt_cache_write_miss_o(),
-      //.evt_cache_read_miss_o (),
-      //.evt_uncached_req_o    (),
-      //.evt_cmo_req_o         (),
-      //.evt_write_req_o       (),
-      //.evt_read_req_o        (),
-      //.evt_prefetch_req_o    (),
-      //.evt_req_on_hold_o     (),
-      //.evt_rtab_rollback_o   (),
-      //.evt_stall_refill_o    (),
-      //.evt_stall_o           (),
+      .evt_cache_write_miss_o(),
+      .evt_cache_read_miss_o (),
+      .evt_uncached_req_o    (),
+      .evt_cmo_req_o         (),
+      .evt_write_req_o       (),
+      .evt_read_req_o        (),
+      .evt_prefetch_req_o    (),
+      .evt_req_on_hold_o     (),
+      .evt_rtab_rollback_o   (),
+      .evt_stall_refill_o    (),
+      .evt_stall_o           (),
 
       .cfg_enable_i                       (1'b1), // enable the cache
       .cfg_wbuf_threshold_i               (3'd2),

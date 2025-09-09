@@ -280,8 +280,8 @@ module llc_cache_wrapper #(
   ) i_llc_config_regfile (
       .clk_i,
       .rst_ni,
-      //.reg_req_i(conf_req_i),
-      //.reg_rsp_o(conf_resp_o),
+      .reg_req_i(),
+      .reg_rsp_o(),
 
       // To HW
       .reg2hw(config_reg2hw),  // Write
@@ -349,7 +349,8 @@ module llc_cache_wrapper #(
       .bist_valid_i      (bist_valid),
       // address rules for bypass selection
       .axi_cached_rule_i (cached_addr_rule),
-      .axi_spm_rule_i    ('0)
+      .axi_spm_rule_i    ('0),
+      .spm_lock_o        ()
   );
 
   axi_llc_hit_miss #(

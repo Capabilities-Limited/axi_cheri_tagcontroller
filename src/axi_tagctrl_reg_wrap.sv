@@ -286,7 +286,8 @@ module axi_tagctrl_reg_wrap #(
       .mst_resp_i,
 
       .cached_start_addr_i,
-      .cached_end_addr_i
+      .cached_end_addr_i,
+      .conf_regs_o()
   );
 
 endmodule
