@@ -120,7 +120,7 @@ module hpdcache_write_req_rsp_wrapper #(
 
     input logic write_data_req_valid_i,
     output logic write_data_req_ready_o,
-    input tag_req_t write_data_req_i,
+    input tag_data_req_t write_data_req_i,
 
     output logic hpdcache_write_req_valid_o,
     input logic hpdcache_write_req_ready_i,
