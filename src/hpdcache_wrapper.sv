@@ -29,9 +29,11 @@ module hpdcache_read_req_rsp_wrapper #(
 
   // remember how to shift read responses based on the address
   logic [$clog2($bits(read_resp_o.data))-1:0] shifts [(2**$bits(read_req_i.a_x_id))-1:0];
-  always_ff @(posedge clk_i or negedge rst_ni)
-    if (read_req_valid_i && hpdcache_read_req_ready_i)
+  always_ff @(posedge clk_i) begin
+    if (read_req_valid_i && hpdcache_read_req_ready_i) begin
       shifts[read_req_i.a_x_id] <= read_req_i.a_x_addr;
+    end
+  end
 
   // convert read descriptor to hpdcache request
   function automatic hpdcache_req_t read_req_to_hpdcache_req(tag_req_t desc);
