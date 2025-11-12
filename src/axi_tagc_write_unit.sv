@@ -74,6 +74,8 @@ module axi_tagc_write_unit #(
   // flip flops
   desc_t desc_d, desc_q;
   logic busy_d, busy_q;
+  logic ff_b_chan_valid_d, ff_b_chan_valid_q;
+  b_chan_t ff_b_chan_d, ff_b_chan_q;
   logic load_desc, load_busy;
 
   // W channel FIFO signals
@@ -140,12 +142,17 @@ module axi_tagc_write_unit #(
     // unlock signal
     w_unlock_req_o  = 1'b0;
     // b response valid
-    b_chan_valid_o  = 1'b0;
+    ff_b_chan_valid_d = ff_b_chan_valid_q;
+    if (b_chan_ready_i) begin
+      ff_b_chan_valid_d = 1'b0;
+    end
+    b_chan_valid_o = ff_b_chan_valid_q;
+    b_chan_slv_o = ff_b_chan_q;
     // control
     if (busy_q) begin
       // only do something if the B response could be send
       // allowed to listen for b ready as it comes from a spill register
-      if (  /* b_chan_ready_i && */ w_unlock_gnt_i) begin
+      if ( /* b_chan_ready_i && */ w_unlock_gnt_i) begin
 
         // check if there is no internal error, this block has to be before the next one
         // as the W beat handshaking gets set here
@@ -158,12 +165,18 @@ module axi_tagc_write_unit #(
           w_ready = 1'b1;
         end
 
+        // We are still trying to send the previous write response
+        if (ff_b_chan_valid_q && desc_q.x_last) begin
+          way_inp_valid_o = 1'b0;
+          w_ready = 1'b0;
+        end
+
         // when a transfer occurs, look at the length field or update the descriptor
         if (w_valid && w_ready) begin
           if (desc_q.a_x_len == '0) begin
             // should a B be sent?
             if (desc_q.x_last) begin
-              b_chan_valid_o = 1'b1;
+              ff_b_chan_valid_d = 1'b1;
             end
             busy_d         = 1'b0;
             load_busy      = 1'b1;
@@ -201,8 +214,10 @@ module axi_tagc_write_unit #(
   endfunction : load_new_desc
 
   // assign of the B channel FIFO input
-  assign b_chan = '{id: desc_q.a_x_id, resp: desc_q.x_resp, default: '0};
+  assign ff_b_chan_d = '{id: desc_q.a_x_id, resp: desc_q.x_resp, default: '0};
 
+  `FFLARN(ff_b_chan_q, ff_b_chan_d, !ff_b_chan_valid_q, '0, clk_i, rst_ni)
+  `FFARN(ff_b_chan_valid_q, ff_b_chan_valid_d, '0, clk_i, rst_ni)
   `FFLARN(desc_q, desc_d, load_desc, '0, clk_i, rst_ni)
   `FFLARN(busy_q, busy_d, load_busy, '0, clk_i, rst_ni)
 endmodule
