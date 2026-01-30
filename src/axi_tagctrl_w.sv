@@ -112,8 +112,8 @@ module axi_tagctrl_w #(
   logic w_mst_fifo_empty;  // the FIFO is full
   logic w_mst_fifo_push;  // push data into the FIFO
   logic w_mst_fifo_pop;  // pop data from FIFO if it gets transferred
-  tagc_oup_t w_mst_fifo_data;  // gets assigned to the w channel
-  tagc_oup_t w_mst_fifo_indata;
+  w_chan_t w_mst_fifo_data;  // gets assigned to the w channel
+  w_chan_t w_mst_fifo_indata;
 
   // Decode tag bit index based on the address
   assign tag_bit_ind = tagctrl_desc_q.a_x_addr[$clog2(Cfg.CapSize/8)+:$clog2(Cfg.AxiDataWidth)];
