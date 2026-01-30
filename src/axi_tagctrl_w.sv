@@ -206,14 +206,16 @@ module axi_tagctrl_w #(
               w_mst_fifo_push = 1'b0;
               w_chan_slv_ready_o = 1'b0;
             end else begin
-              tag_fifo_push = 1'b1;
-              tag_fifo_indata.data = tagc_w_data_d;
-              tag_fifo_indata.strb = 8'b11111111;
-              tag_fifo_indata.bit_en = tagc_w_bit_en_d;
-              tagc_w_bit_en_d = '0;
-              store_tagc_bit_en = 1'b1;
-              tagc_w_data_d = '0;
-              store_tagc_data = 1'b1;
+              if (!w_mst_fifo_full) begin
+                tag_fifo_push = 1'b1;
+                tag_fifo_indata.data = tagc_w_data_d;
+                tag_fifo_indata.strb = 8'b11111111;
+                tag_fifo_indata.bit_en = tagc_w_bit_en_d;
+                tagc_w_bit_en_d = '0;
+                store_tagc_bit_en = 1'b1;
+                tagc_w_data_d = '0;
+                store_tagc_data = 1'b1;
+              end
             end
           end
           if (w_mst_fifo_full) begin
