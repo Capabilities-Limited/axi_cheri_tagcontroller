@@ -51,6 +51,7 @@ module axi_tagctrl_top #(
     /// Note on restrictions:
     /// The same restriction as of parameter `NumLines` applies.
     parameter int unsigned NumBlocks        = 32'd0,
+    parameter int unsigned MaxTrans         = 32'd1,
     /// AXI4+ATOP ID field width of the slave port.
     /// The ID field width of the master port is this parameter + 1.
     parameter int unsigned AxiIdWidth       = 32'd6,
@@ -801,7 +802,7 @@ module axi_tagctrl_top #(
       .mst_req_t    (mst_req_t),
       .mst_resp_t   (mst_resp_t),
       .NoSlvPorts   (32'd2),
-      .MaxWTrans    (axi_llc_pkg::MaxTrans),
+      .MaxWTrans    (MaxTrans),
       .FallThrough  (1'b0),                   // No registers
       .SpillAw      (1'b0),                   // No registers
       .SpillW       (1'b0),                   // No registers
@@ -822,7 +823,7 @@ module axi_tagctrl_top #(
   // Isolation module before demux to easy flushing,
   // AXI requests get stalled while flush is active
   axi_isolate #(
-      .NumPending  (axi_llc_pkg::MaxTrans),
+      .NumPending  (MaxTrans),
       .req_t   (slv_req_t),
       .resp_t  (slv_resp_t)
   ) i_axi_isolate_flush (

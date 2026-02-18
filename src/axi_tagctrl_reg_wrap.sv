@@ -265,6 +265,7 @@ module axi_tagctrl_reg_wrap #(
       .SetAssociativity(SetAssociativity),
       .NumLines        (NumLines),
       .NumBlocks       (NumBlocks),
+      .MaxTrans        (32'b1),
       .AxiIdWidth      (AxiIdWidth),
       .AxiAddrWidth    (AxiAddrWidth),
       .AxiDataWidth    (AxiDataWidth),
