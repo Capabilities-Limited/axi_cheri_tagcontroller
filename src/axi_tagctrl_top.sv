@@ -387,7 +387,7 @@ module axi_tagctrl_top #(
       .desc_ready_i      (ax_desc_ready[axi_llc_pkg::ConfigUnit]),
       // flush control signals to prevent new data in ax_cutter loading
       .tagctrl_isolate_o (tagctrl_isolate),
-      .tagctrl_isolated_i(tagctrl_isolated),
+      .tagctrl_isolated_i(1'b1),//tagctrl_isolated),
       .aw_unit_busy_i    (aw_unit_busy),
       .ar_unit_busy_i    (ar_unit_busy),
       .flush_desc_recv_i (flush_recv),
@@ -412,9 +412,9 @@ module axi_tagctrl_top #(
   ) axi_tag_ctrl_ar (
       .clk_i,
       .rst_ni,
-      .ax_chan_slv_i      (to_tagctrl_req.ar),
-      .ax_chan_valid_i    (to_tagctrl_req.ar_valid),
-      .ax_chan_ready_o    (from_tagctrl_resp.ar_ready),
+      .ax_chan_slv_i      (slv_req_i.ar),
+      .ax_chan_valid_i    (slv_req_i.ar_valid),
+      .ax_chan_ready_o    (slv_resp_o.ar_ready),
       .tagc_desc_o        (ax_desc[axi_llc_pkg::ArChanUnit]),
       .tagc_valid_o       (ax_desc_valid[axi_llc_pkg::ArChanUnit]),
       .tagc_ready_i       (ax_desc_ready[axi_llc_pkg::ArChanUnit]),
@@ -462,9 +462,9 @@ module axi_tagctrl_top #(
       .tagc_inp_r_i        (tagc_r_inp),
       .tagc_inp_r_valid_i  (tagc_r_inp_valid),
       .tagc_inp_r_ready_o  (tagc_r_inp_ready),
-      .r_chan_slv_o        (from_tagctrl_resp.r),
-      .r_chan_slv_valid_o  (from_tagctrl_resp.r_valid),
-      .r_chan_slv_ready_i  (to_tagctrl_req.r_ready)
+      .r_chan_slv_o        (slv_resp_o.r),
+      .r_chan_slv_valid_o  (slv_resp_o.r_valid),
+      .r_chan_slv_ready_i  (slv_req_i.r_ready)
   );
 
   //--------------------------------//
@@ -480,9 +480,9 @@ module axi_tagctrl_top #(
   ) axi_tag_ctrl_aw (
       .clk_i,
       .rst_ni,
-      .ax_chan_slv_i      (to_tagctrl_req.aw),
-      .ax_chan_valid_i    (to_tagctrl_req.aw_valid),
-      .ax_chan_ready_o    (from_tagctrl_resp.aw_ready),
+      .ax_chan_slv_i      (slv_req_i.aw),
+      .ax_chan_valid_i    (slv_req_i.aw_valid),
+      .ax_chan_ready_o    (slv_resp_o.aw_ready),
       .tagc_desc_o        (ax_desc[axi_llc_pkg::AwChanUnit]),
       .tagc_valid_o       (ax_desc_valid[axi_llc_pkg::AwChanUnit]),
       .tagc_ready_i       (ax_desc_ready[axi_llc_pkg::AwChanUnit]),
@@ -526,12 +526,12 @@ module axi_tagctrl_top #(
       .tagctrl_desc_i      (tagctrl_w_desc),
       .tagctrl_desc_valid_i(tagctrl_w_valid),
       .tagctrl_desc_ready_o(tagctrl_w_ready),
-      .w_chan_slv_i        (to_tagctrl_req.w),
-      .w_chan_slv_valid_i  (to_tagctrl_req.w_valid),
-      .w_chan_slv_ready_o  (from_tagctrl_resp.w_ready),
-      .b_chan_slv_o        (from_tagctrl_resp.b),
-      .b_chan_slv_valid_o  (from_tagctrl_resp.b_valid),
-      .b_chan_slv_ready_i  (to_tagctrl_req.b_ready),
+      .w_chan_slv_i        (slv_req_i.w),
+      .w_chan_slv_valid_i  (slv_req_i.w_valid),
+      .w_chan_slv_ready_o  (slv_resp_o.w_ready),
+      .b_chan_slv_o        (slv_resp_o.b),
+      .b_chan_slv_valid_o  (slv_resp_o.b_valid),
+      .b_chan_slv_ready_i  (slv_req_i.b_ready),
       .tagc_oup_o          (tagc_w_oup),
       .tagc_oup_valid_o    (tagc_w_oup_valid),
       .tagc_oup_ready_i    (tagc_w_oup_ready),
@@ -818,6 +818,7 @@ module axi_tagctrl_top #(
       .mst_req_o  (mst_req_o),
       .mst_resp_i (mst_resp_i)
   );
+  /*
   slv_req_t  slv_req_cut;
   slv_resp_t slv_resp_cut;
   // Isolation module before demux to easy flushing,
@@ -854,7 +855,7 @@ module axi_tagctrl_top #(
       .mst_req_o (slv_req_cut),
       .mst_resp_i(slv_resp_cut)
   );
-
+*/
   // pragma translate_off
 `ifndef VERILATOR
   initial begin : proc_assert_axi_params
