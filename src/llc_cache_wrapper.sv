@@ -269,6 +269,7 @@ module llc_cache_wrapper #(
   axi_llc_cfg_regs_d_t config_regs_d;
   axi_llc_cfg_regs_q_t config_regs_q;
 
+  `include "axi_llc/assign.svh"
   // Connecting the generated register file structs and the AXI_LLC register structs
   `AXI_LLC_ASSIGN_REGS_Q_FROM_REGBUS(config_regs_q, config_reg2hw)
   `AXI_LLC_ASSIGN_REGBUS_FROM_REGS_D(config_hw2reg, config_regs_d)
