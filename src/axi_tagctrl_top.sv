@@ -60,6 +60,8 @@ module axi_tagctrl_top #(
     parameter int unsigned AxiDataWidth     = 32'd64,
     /// AXI4+ATOP user field width of both the slave and the master port.
     parameter int unsigned AxiUserWidth     = 32'd1,
+    /// AXI4+ATOP len field max supported for buffering.
+    parameter int unsigned AxiMaxBurstLen   = 32'd8,
     /// Internal register width
     parameter int unsigned RegWidth         = 64,
     /// Register type for HW -> Register direction
@@ -169,7 +171,7 @@ module axi_tagctrl_top #(
       TagCacheMemBase: TagCacheMemBase,
       TagWFifoDepth: 4,
       TagAXFifoDepth: 4,
-      TagRFifoDepth: 8,
+      TagRFifoDepth: AxiMaxBurstLen,
       tagc_cfg: LLC_Cfg
   };
 

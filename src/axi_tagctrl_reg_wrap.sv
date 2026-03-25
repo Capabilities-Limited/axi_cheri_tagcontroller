@@ -269,6 +269,7 @@ module axi_tagctrl_reg_wrap #(
       .AxiAddrWidth    (AxiAddrWidth),
       .AxiDataWidth    (AxiDataWidth),
       .AxiUserWidth    (AxiUserWidth),
+      .AxiMaxBurstLen  (16),
       .RegWidth        (32'd64),
       .conf_regs_d_t   (axi_llc_cfg_regs_d_t),
       .conf_regs_q_t   (axi_llc_cfg_regs_q_t),
