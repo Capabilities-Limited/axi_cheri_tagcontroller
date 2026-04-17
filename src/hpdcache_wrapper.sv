@@ -85,6 +85,7 @@ module hpdcache_read_req_rsp_wrapper #(
                                                                           , logic [$clog2($bits(read_resp_o.data))-1:0] shamnt );
     tag_read_resp_t resp;
     resp.id = rsp.tid;
+    shamnt[1:0] = 2'b00;
     resp.data = rsp.rdata << shamnt;
     resp.resp = (rsp.error || rsp.aborted) ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     resp.last = 1'b1;
