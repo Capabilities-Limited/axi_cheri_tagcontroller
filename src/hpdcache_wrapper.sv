@@ -268,6 +268,7 @@ module hpdcache_wrapper #(
     userCfg.nRequesters = 2;
     userCfg.paWidth = 49;
     userCfg.wordWidth = 1;
+    userCfg.wordUserWidth = 1;
     userCfg.sets = 128;
     userCfg.ways = 4;
     userCfg.clWords = 512;
@@ -303,6 +304,8 @@ module hpdcache_wrapper #(
     userCfg.wtEn = 1'b0;
     userCfg.wbEn = 1'b1;
     userCfg.lowLatency = 1'b0;
+    userCfg.userEn = 1'b0;
+    userCfg.capAmoEn = 1'b0;
     return userCfg;
   endfunction
 
