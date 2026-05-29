@@ -298,7 +298,7 @@ module axi_tagctrl_top #(
     .tag_data_req_t(tagc_oup_t),
     .tag_write_resp_t(slv_b_chan_t),
     .tag_read_resp_t(tagc_inp_t),
-    .AxiIdWidth(AxiIdWidth),
+    .AxiIdWidth(AxiCfg.SlvPortIdWidth-1),
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
     .AxiUserWidth(AxiUserWidth),

@@ -136,10 +136,10 @@ module tag_lookup_engine #(
   `ifndef PULP_LLC
   parameter int unsigned cache_req_words = 64'd4,
   `endif
-  parameter int unsigned AxiIdWidth = 64'd6,
+  parameter int unsigned AxiIdWidth = 64'd5,
   parameter int unsigned AxiAddrWidth = 64'd64,
   parameter int unsigned AxiDataWidth = 64'd64,
-  parameter int unsigned AxiUserWidth = 64'd1,
+  parameter int unsigned AxiUserWidth = 64'd0,
   parameter type mem_req_t = logic,
   parameter type mem_resp_t = logic,
   parameter type axi_addr_t = logic [AxiAddrWidth-1:0]
@@ -188,7 +188,35 @@ module tag_lookup_engine #(
   input mem_resp_t mem_resp_i
 );
 
+  //////////////////////////////////////////////////////////////////////////////
+  // local types and assertions
+  //////////////////////////////////////////////////////////////////////////////
+  // TODO assert that inner AXI id witdh + max Trans fix in outer id width
+  //assert (AxiAddrWidth < 2) $error("tag_lookup_engine: the AXI ID width configuration is not supported");
+
+  // derive AXI types for inner (axi_mux slave) and outer (axi_mux master) traffic
+  typedef logic [AxiIdWidth:0] axi_slv_id_t;
+  typedef logic [AxiIdWidth-1:0] axi_mst_id_t;
+  typedef logic [AxiDataWidth-1:0] axi_data_t;
+  typedef logic [(AxiDataWidth/8)-1:0] axi_strb_t;
+  typedef logic [0:0] axi_user_t;
+
+  `AXI_TYPEDEF_AW_CHAN_T(slv_aw_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_W_CHAN_T(w_chan_t, axi_data_t, axi_strb_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T(slv_b_chan_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(slv_ar_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(slv_r_chan_t, axi_data_t, axi_slv_id_t, axi_user_t)
+  `AXI_TYPEDEF_REQ_T(slv_req_t, slv_aw_chan_t, w_chan_t, slv_ar_chan_t)
+  `AXI_TYPEDEF_RESP_T(slv_resp_t, slv_b_chan_t, slv_r_chan_t)
+
+  `AXI_TYPEDEF_AW_CHAN_T(mst_aw_chan_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_B_CHAN_T(mst_b_chan_t, axi_mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_AR_CHAN_T(mst_ar_chan_t, axi_addr_t, axi_mst_id_t, axi_user_t)
+  `AXI_TYPEDEF_R_CHAN_T(mst_r_chan_t, axi_data_t, axi_mst_id_t, axi_user_t)
+
+  //////////////////////////////////////////////////////////////////////////////
   // local signals for per table-level accesses (root, leaf)
+  //////////////////////////////////////////////////////////////////////////////
   logic root_read_req_valid, leaf_read_req_valid;
   logic root_read_req_ready, leaf_read_req_ready;
   tag_req_t root_read_req, leaf_read_req;
@@ -205,7 +233,12 @@ module tag_lookup_engine #(
   logic root_read_resp_ready, leaf_read_resp_ready;
   tag_read_resp_t root_read_resp, leaf_read_resp;
 
+  mem_req_t root_mem_req, leaf_mem_req;
+  mem_resp_t root_mem_resp, leaf_mem_resp;
+
+  //////////////////////////////////////////////////////////////////////////////
   // generate per table-level accesses
+  //////////////////////////////////////////////////////////////////////////////
   table_lookups #(
     .tag_req_t,
     .tag_data_req_t,
@@ -269,7 +302,20 @@ module tag_lookup_engine #(
     .leaf_table_start_addr_i(/*TODO*/)
   );
 
-  // Backing cache
+  //////////////////////////////////////////////////////////////////////////////
+  // Backing caches
+  //////////////////////////////////////////////////////////////////////////////
+
+  // TODO instanciate 2 caches
+  // root accesses TODO
+  assign root_mem_req.aw_valid = 1'b0;
+  assign root_mem_req.w_valid = 1'b0;
+  assign root_mem_req.ar_valid = 1'b0;
+  assign root_mem_req.r_ready = 1'b1;
+  assign root_mem_req.b_ready = 1'b1;
+  //assign root_mem_resp
+
+  // leaf accesses
   `ifndef PULP_LLC
   hpdcache_wrapper #(
   `else
@@ -279,7 +325,7 @@ module tag_lookup_engine #(
     .tag_data_req_t,
     .tag_write_resp_t,
     .tag_read_resp_t,
-    .AxiIdWidth,
+    .AxiIdWidth(AxiIdWidth-1),
     .AxiAddrWidth,
     .AxiDataWidth,
     .AxiUserWidth,
@@ -324,7 +370,48 @@ module tag_lookup_engine #(
 
     //// tag store memory interfaces //
     ///////////////////////////////////
-    .mem_req_o,
-    .mem_resp_i
+    .mem_req_o(leaf_mem_req),
+    .mem_resp_i(leaf_mem_resp)
   );
+
+  //////////////////////////////////////////////////////////////////////////////
+  // converge tag store memory traffic
+  //////////////////////////////////////////////////////////////////////////////
+  axi_mux #(
+    .SlvAxiIDWidth(AxiIdWidth-1),
+    .slv_aw_chan_t(slv_aw_chan_t),
+    .mst_aw_chan_t(mst_aw_chan_t),
+    .w_chan_t     (w_chan_t),
+    .slv_b_chan_t (slv_b_chan_t),
+    .mst_b_chan_t (mst_b_chan_t),
+    .slv_ar_chan_t(slv_ar_chan_t),
+    .mst_ar_chan_t(mst_ar_chan_t),
+    .slv_r_chan_t (slv_r_chan_t),
+    .mst_r_chan_t (mst_r_chan_t),
+    .slv_req_t    (slv_req_t),
+    .slv_resp_t   (slv_resp_t),
+    .mst_req_t    (mem_req_t),
+    .mst_resp_t   (mem_resp_t),
+    .NoSlvPorts   (32'd2),
+    .MaxWTrans    (32'd8),
+    .FallThrough  (1'b0),                   // No registers
+    .SpillAw      (1'b0),                   // No registers
+    .SpillW       (1'b0),                   // No registers
+    .SpillB       (1'b0),                   // No registers
+    .SpillAr      (1'b0),                   // No registers
+    .SpillR       (1'b0)                    // No registers
+  ) i_axi_mux (
+    .clk_i,
+    .rst_ni,
+    .test_i(1'b0),
+    .slv_reqs_i({root_mem_req, leaf_mem_req}),
+    .slv_resps_o({root_mem_resp, leaf_mem_resp}),
+    .mst_req_o  (mem_req_o),
+    .mst_resp_i (mem_resp_i)
+  );
+
+  //// debug
+  //assign mem_req_o = leaf_mem_req;
+  //assign leaf_mem_resp = mem_resp_i;
+
 endmodule
