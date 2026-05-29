@@ -289,11 +289,10 @@ module axi_tagctrl_top #(
   // global flush signals
   logic tagctrl_isolate, tagctrl_isolated;
 
-  // wrapped cache instance to back tag requests
+  // backing tag memory accesses
+  tag_lookup_engine #(
   `ifndef PULP_LLC
-  hpdcache_wrapper #(
   `else
-  llc_cache_wrapper #(
   `endif
     .tag_req_t(tagc_desc_t),
     .tag_data_req_t(tagc_oup_t),
@@ -312,7 +311,7 @@ module axi_tagctrl_top #(
     `ifdef PULP_LLC
     , .tagc_desc_t(tagc_desc_t)
     `endif
-  ) i_tag_cache_wrapper (
+  ) i_tag_lookup_engine (
     .clk_i,
     .rst_ni,
 
@@ -569,8 +568,8 @@ module axi_tagctrl_top #(
   // AXI requests get stalled while flush is active
   axi_isolate #(
       .NumPending  (axi_llc_pkg::MaxTrans),
-      .req_t       (slv_req_t),
-      .resp_t      (slv_resp_t)
+      .axi_req_t   (slv_req_t),
+      .axi_resp_t  (slv_resp_t)
   ) i_axi_isolate_flush (
       .clk_i,
       .rst_ni,
@@ -589,8 +588,8 @@ module axi_tagctrl_top #(
       .b_chan_t   (slv_b_chan_t),
       .ar_chan_t  (slv_ar_chan_t),
       .r_chan_t   (slv_r_chan_t),
-      .req_t      (slv_req_t),
-      .resp_t     (slv_resp_t)
+      .axi_req_t  (slv_req_t),
+      .axi_resp_t (slv_resp_t)
   ) i_axi_cut (
       .clk_i,
       .rst_ni,
