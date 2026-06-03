@@ -1,3 +1,4 @@
+
 module table_lookups #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
@@ -79,14 +80,9 @@ module table_lookups #(
   // read response
   input logic leaf_read_resp_valid_i,
   output logic leaf_read_resp_ready_o,
-  input tag_read_resp_t leaf_read_resp_i,
-  //////////////////////////////////////////////////////////////////////////////
-
-  // configuration interfaces (2 lvls) //
-  ///////////////////////////////////////
-  input axi_addr_t root_table_start_addr_i,
-  input axi_addr_t leaf_table_start_addr_i
+  input tag_read_resp_t leaf_read_resp_i
 );
+////////////////////////////////////////////////////////////////////////////////
 
   // TODO
   // TODO split the incomming request into a root and a leaf access
@@ -152,6 +148,17 @@ module tag_lookup_engine #(
   // Asynchronous reset, active low
   input logic rst_ni,
 
+  // cache cfg signals //
+  ///////////////////////
+  output logic isolate_o,
+  input logic isolated_i,
+  input axi_addr_t cached_start_addr_i,
+  input axi_addr_t cached_end_addr_i,
+
+  // tag store signals //
+  ///////////////////////
+  input axi_addr_t tag_store_base_addr_i,
+
   // tag controller slave interfaces //
   /////////////////////////////////////
   // incoming tag read request descriptor
@@ -174,13 +181,6 @@ module tag_lookup_engine #(
   output logic read_resp_valid_o,
   input logic read_resp_ready_i,
   output tag_read_resp_t read_resp_o,
-
-  // ctrl interfaces //
-  /////////////////////
-  output logic isolate_o,
-  input logic isolated_i,
-  input axi_addr_t cached_start_addr_i,
-  input axi_addr_t cached_end_addr_i,
 
   // tag store master interfaces //
   /////////////////////////////////
@@ -217,6 +217,11 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
   // local signals for per table-level accesses (root, leaf)
   //////////////////////////////////////////////////////////////////////////////
+
+  axi_addr_t root_table_base_addr, leaf_table_base_addr;
+  assign leaf_table_base_addr = tag_store_base_addr_i;
+  assign root_table_base_addr = 'h0; /* TODO */
+
   logic root_read_req_valid, leaf_read_req_valid;
   logic root_read_req_ready, leaf_read_req_ready;
   tag_req_t root_read_req, leaf_read_req;
@@ -296,10 +301,7 @@ module tag_lookup_engine #(
     .leaf_write_resp_i(leaf_write_resp),
     .leaf_read_resp_valid_i(leaf_read_resp_valid),
     .leaf_read_resp_ready_o(leaf_read_resp_ready),
-    .leaf_read_resp_i(leaf_read_resp),
-    // configuration interfaces
-    .root_table_start_addr_i(/*TODO*/),
-    .leaf_table_start_addr_i(/*TODO*/)
+    .leaf_read_resp_i(leaf_read_resp)
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -377,6 +379,19 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
   // converge tag store memory traffic
   //////////////////////////////////////////////////////////////////////////////
+
+  function automatic slv_req_t to_tag_table_byte_addr(axi_addr_t table_base_addr, slv_req_t req);
+    slv_req_t ret = req;
+`ifdef PULP_LLC
+    ret.aw.addr = req.aw.addr + table_base_addr;
+    ret.ar.addr = req.ar.addr + table_base_addr;
+`else
+    ret.aw.addr = (req.aw.addr>>3) + table_base_addr;
+    ret.ar.addr = (req.ar.addr>>3) + table_base_addr;
+`endif
+    return ret;
+  endfunction
+
   axi_mux #(
     .SlvAxiIDWidth(AxiIdWidth-1),
     .slv_aw_chan_t(slv_aw_chan_t),
@@ -404,7 +419,8 @@ module tag_lookup_engine #(
     .clk_i,
     .rst_ni,
     .test_i(1'b0),
-    .slv_reqs_i({root_mem_req, leaf_mem_req}),
+    .slv_reqs_i ({to_tag_table_byte_addr(root_table_base_addr, root_mem_req),
+                  to_tag_table_byte_addr(leaf_table_base_addr, leaf_mem_req)}),
     .slv_resps_o({root_mem_resp, leaf_mem_resp}),
     .mst_req_o  (mem_req_o),
     .mst_resp_i (mem_resp_i)

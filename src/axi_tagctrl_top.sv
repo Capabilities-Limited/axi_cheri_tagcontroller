@@ -513,20 +513,6 @@ module axi_tagctrl_top #(
       .b_chan_mst_ready_o  (tagctrl_req.b_ready)
   );
 
-  function automatic slv_req_t to_tag_table_byte_addr(slv_req_t req);
-    slv_req_t ret = req;
-`ifdef PULP_LLC
-    ret.aw.addr = req.aw.addr + TagCacheMemBase;
-    ret.ar.addr = req.ar.addr + TagCacheMemBase;
-`else
-    ret.aw.addr = (req.aw.addr>>3) + TagCacheMemBase;
-    ret.ar.addr = (req.ar.addr>>3) + TagCacheMemBase;
-    ret.aw.size = req.aw.size - 3;
-    ret.ar.size = req.ar.size - 3;
-`endif
-    return ret;
-  endfunction
-
   // AXI Mux to multiplex accesses from the tag cache to refill/evict tag cache lines
   // and from the tracker to read/write to memory
   // Attention: This unit widens the AXI ID by one!
@@ -557,7 +543,7 @@ module axi_tagctrl_top #(
       .clk_i      (clk_i),
       .rst_ni     (rst_ni),
       .test_i     (test_i),
-      .slv_reqs_i ({to_tag_table_byte_addr(tagc_req), tagctrl_req}),
+      .slv_reqs_i ({tagc_req, tagctrl_req}),
       .slv_resps_o({tagc_resp, tagctrl_resp}),
       .mst_req_o  (mst_req_o),
       .mst_resp_i (mst_resp_i)
