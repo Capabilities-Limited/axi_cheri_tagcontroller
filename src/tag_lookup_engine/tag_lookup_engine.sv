@@ -214,14 +214,64 @@ module tag_lookup_engine #(
   // Backing caches
   //////////////////////////////////////////////////////////////////////////////
 
-  // TODO instanciate 2 caches
-  // root accesses TODO
-  assign root_mem_req.aw_valid = 1'b0;
-  assign root_mem_req.w_valid = 1'b0;
-  assign root_mem_req.ar_valid = 1'b0;
-  assign root_mem_req.r_ready = 1'b1;
-  assign root_mem_req.b_ready = 1'b1;
-  //assign root_mem_resp
+  // root accesses
+  `ifndef PULP_LLC
+  hpdcache_wrapper #(
+  `else
+  llc_cache_wrapper #(
+  `endif
+    .tag_req_t,
+    .tag_data_req_t,
+    .tag_write_resp_t,
+    .tag_read_resp_t,
+    .AxiIdWidth(AxiIdWidth-1),
+    .AxiAddrWidth,
+    .AxiDataWidth,
+    .AxiUserWidth,
+    `ifndef PULP_LLC
+    .cache_req_words,
+    `endif
+    .mem_req_t,
+    .mem_resp_t,
+    .axi_addr_t
+    `ifdef PULP_LLC
+    , .tagc_desc_t
+    `endif
+  ) i_root_tag_cache_wrapper (
+    .clk_i,
+    .rst_ni,
+
+    // incoming read tag request descriptor
+    .read_req_valid_i(root_read_req_valid),
+    .read_req_ready_o(root_read_req_ready),
+    .read_req_i(root_read_req),
+    // incoming write tag request descriptor
+    .write_req_valid_i(root_write_req_valid),
+    .write_req_ready_o(root_write_req_ready),
+    .write_req_i(root_write_req),
+    // incoming write data
+    .write_data_req_valid_i(root_write_data_req_valid),
+    .write_data_req_ready_o(root_write_data_req_ready),
+    .write_data_req_i(root_write_data_req),
+    // outgoing read response
+    .read_resp_valid_o(root_read_resp_valid),
+    .read_resp_ready_i(root_read_resp_ready),
+    .read_resp_o(root_read_resp),
+    // outgoing write response
+    .write_resp_valid_o(root_write_resp_valid),
+    .write_resp_ready_i(root_write_resp_ready),
+    .write_resp_o(root_write_resp),
+
+    .isolate_o,
+    .isolated_i,
+    .cached_start_addr_i,
+    .cached_end_addr_i,
+
+    //// tag store memory interfaces //
+    ///////////////////////////////////
+    .mem_req_o(root_mem_req),
+    .mem_resp_i(root_mem_resp)
+  );
 
   // leaf accesses
   `ifndef PULP_LLC
@@ -246,7 +296,7 @@ module tag_lookup_engine #(
     `ifdef PULP_LLC
     , .tagc_desc_t
     `endif
-  ) i_tag_cache_wrapper (
+  ) i_leaf_tag_cache_wrapper (
     .clk_i,
     .rst_ni,
 
