@@ -73,6 +73,10 @@ module tag_lookup_engine_table_lookups #(
   input logic read_req_valid_i,
   output logic read_req_ready_o,
   input tag_req_t read_req_i,
+  // outgoing read response
+  output logic read_resp_valid_o,
+  input logic read_resp_ready_i,
+  output tag_read_resp_t read_resp_o,
   // incoming tag write request descriptor
   input logic write_req_valid_i,
   output logic write_req_ready_o,
@@ -85,60 +89,54 @@ module tag_lookup_engine_table_lookups #(
   output logic write_resp_valid_o,
   input logic write_resp_ready_i,
   output tag_write_resp_t write_resp_o,
-  // outgoing read response
-  output logic read_resp_valid_o,
-  input logic read_resp_ready_i,
-  output tag_read_resp_t read_resp_o,
-  //////////////////////////////////////////////////////////////////////////////
 
   // outgoing interfaces (2 lvls, root, leaf) //
   //////////////////////////////////////////////////////////////////////////////
   // root level interface
   ////////////////////////////////////////////////
-  // tag read request descriptor
+  // root read request
   output logic root_read_req_valid_o,
   input logic root_read_req_ready_i,
   output tag_req_t root_read_req_o,
-  // tag write request descriptor
-  output logic root_write_req_valid_o,
-  input logic root_write_req_ready_i,
-  output tag_req_t root_write_req_o,
-  // write data
-  output logic root_write_data_req_valid_o,
-  input logic root_write_data_req_ready_i,
-  output tag_data_req_t root_write_data_req_o,
-  // write response
-  input logic root_write_resp_valid_i,
-  output logic root_write_resp_ready_o,
-  input tag_write_resp_t root_write_resp_i,
-  // read response
+  // root read response
   input logic root_read_resp_valid_i,
   output logic root_read_resp_ready_o,
   input tag_read_resp_t root_read_resp_i,
+  // root write request
+  output logic root_write_req_valid_o,
+  input logic root_write_req_ready_i,
+  output tag_req_t root_write_req_o,
+  // root write data
+  output logic root_write_data_req_valid_o,
+  input logic root_write_data_req_ready_i,
+  output tag_data_req_t root_write_data_req_o,
+  // root write response
+  input logic root_write_resp_valid_i,
+  output logic root_write_resp_ready_o,
+  input tag_write_resp_t root_write_resp_i,
   // leaf level interface
   ////////////////////////////////////////////////
-  // tag read request descriptor
+  // leaf read request
   output logic leaf_read_req_valid_o,
   input logic leaf_read_req_ready_i,
   output tag_req_t leaf_read_req_o,
-  // tag write request descriptor
+  // leaf read response
+  input logic leaf_read_resp_valid_i,
+  output logic leaf_read_resp_ready_o,
+  input tag_read_resp_t leaf_read_resp_i,
+  // leaf write request
   output logic leaf_write_req_valid_o,
   input logic leaf_write_req_ready_i,
   output tag_req_t leaf_write_req_o,
-  // write data
+  // leaf write data
   output logic leaf_write_data_req_valid_o,
   input logic leaf_write_data_req_ready_i,
   output tag_data_req_t leaf_write_data_req_o,
-  // write response
+  // leaf write response
   input logic leaf_write_resp_valid_i,
   output logic leaf_write_resp_ready_o,
-  input tag_write_resp_t leaf_write_resp_i,
-  // read response
-  input logic leaf_read_resp_valid_i,
-  output logic leaf_read_resp_ready_o,
-  input tag_read_resp_t leaf_read_resp_i
+  input tag_write_resp_t leaf_write_resp_i
 );
-////////////////////////////////////////////////////////////////////////////////
 
   // TODO
   // TODO split the incomming request into a root and a leaf access
@@ -347,6 +345,9 @@ module tag_lookup_engine #(
     .read_req_valid_i,
     .read_req_ready_o,
     .read_req_i,
+    .read_resp_valid_o,
+    .read_resp_ready_i,
+    .read_resp_o,
     .write_req_valid_i,
     .write_req_ready_o,
     .write_req_i,
@@ -356,14 +357,14 @@ module tag_lookup_engine #(
     .write_resp_valid_o,
     .write_resp_ready_i,
     .write_resp_o,
-    .read_resp_valid_o,
-    .read_resp_ready_i,
-    .read_resp_o,
     // outgoing interfaces (2 lvls, root, leaf)
     // root level interface
     .root_read_req_valid_o(root_read_req_valid),
     .root_read_req_ready_i(root_read_req_ready),
     .root_read_req_o(root_read_req),
+    .root_read_resp_valid_i(root_read_resp_valid),
+    .root_read_resp_ready_o(root_read_resp_ready),
+    .root_read_resp_i(root_read_resp),
     .root_write_req_valid_o(root_write_req_valid),
     .root_write_req_ready_i(root_write_req_ready),
     .root_write_req_o(root_write_req),
@@ -373,13 +374,13 @@ module tag_lookup_engine #(
     .root_write_resp_valid_i(root_write_resp_valid),
     .root_write_resp_ready_o(root_write_resp_ready),
     .root_write_resp_i(root_write_resp),
-    .root_read_resp_valid_i(root_read_resp_valid),
-    .root_read_resp_ready_o(root_read_resp_ready),
-    .root_read_resp_i(root_read_resp),
     // leaf level interface
     .leaf_read_req_valid_o(leaf_read_req_valid),
     .leaf_read_req_ready_i(leaf_read_req_ready),
     .leaf_read_req_o(leaf_read_req),
+    .leaf_read_resp_valid_i(leaf_read_resp_valid),
+    .leaf_read_resp_ready_o(leaf_read_resp_ready),
+    .leaf_read_resp_i(leaf_read_resp),
     .leaf_write_req_valid_o(leaf_write_req_valid),
     .leaf_write_req_ready_i(leaf_write_req_ready),
     .leaf_write_req_o(leaf_write_req),
@@ -388,10 +389,7 @@ module tag_lookup_engine #(
     .leaf_write_data_req_o(leaf_write_data_req),
     .leaf_write_resp_valid_i(leaf_write_resp_valid),
     .leaf_write_resp_ready_o(leaf_write_resp_ready),
-    .leaf_write_resp_i(leaf_write_resp),
-    .leaf_read_resp_valid_i(leaf_read_resp_valid),
-    .leaf_read_resp_ready_o(leaf_read_resp_ready),
-    .leaf_read_resp_i(leaf_read_resp)
+    .leaf_write_resp_i(leaf_write_resp)
   );
 
   //////////////////////////////////////////////////////////////////////////////
