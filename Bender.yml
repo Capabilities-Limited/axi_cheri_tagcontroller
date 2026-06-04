@@ -26,7 +26,9 @@ sources:
   - src/axi_tagctrl_ways.sv
   - src/hpdcache_wrapper.sv
   - src/llc_cache_wrapper.sv
-  - src/tag_lookup_engine.sv
+  - src/tag_lookup_engine/tag_lookup_engine.sv
+  - src/tag_lookup_engine/tag_lookup_engine_config.sv
+  - src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv
   # Level 1
   - src/axi_tagc_read_unit.sv
   - src/axi_tagc_write_unit.sv
