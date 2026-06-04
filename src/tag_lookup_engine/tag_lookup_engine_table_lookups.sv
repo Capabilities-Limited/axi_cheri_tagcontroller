@@ -182,20 +182,53 @@ module tag_lookup_engine_table_lookups_read #(
   input  tag_read_resp_t leaf_resp_i
 );
 
-  // outgoing root interface //
-  /////////////////////////////
-  assign root_req_valid_o = 1'b0;
-  assign root_resp_ready_o = 1'b1;
+  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
+    desc_with_addr = desc;
+    desc_with_addr.a_x_addr = addr;
+    return desc_with_addr;
+  endfunction
 
-  // outgoing leaf interface //
-  /////////////////////////////
-  assign leaf_req_valid_o = req_valid_i;
+  // remember if we sent a request on outgoing interface
+  logic root_sent_q, root_sent_d;
+  logic leaf_sent_q, leaf_sent_d;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      root_sent_q <= 1'b0;
+      leaf_sent_q <= 1'b0;
+    end else begin
+      root_sent_q <= root_sent_d;
+      leaf_sent_q <= leaf_sent_d;
+    end
+  end
+
+  // produce handshake signals
+  logic root_req_valid, leaf_req_valid, req_ready;
+  assign root_req_valid = req_valid_i && !root_sent_q;
+  assign leaf_req_valid = req_valid_i && !leaf_sent_q;
+  assign req_ready = req_valid_i && (root_sent_q || (root_req_valid && root_req_ready_i))
+                                 && (leaf_sent_q || (leaf_req_valid && leaf_req_ready_i));
+  always_comb begin
+    root_sent_d = root_sent_q;
+    leaf_sent_d = leaf_sent_q;
+    if (root_req_valid && root_req_ready_i) root_sent_d = 1'b1;
+    if (leaf_req_valid && leaf_req_ready_i) leaf_sent_d = 1'b1;
+    if (req_valid_i && req_ready) begin
+      root_sent_d = 1'b0;
+      leaf_sent_d = 1'b0;
+    end
+  end
+
+  // outgoing interface requests
+  assign root_req_valid_o = root_req_valid;
+  assign root_req_o = desc_with_addr(req_i, root_idx_i);
+  assign leaf_req_valid_o = leaf_req_valid;
   assign leaf_req_o = req_i;
-  assign leaf_resp_ready_o = resp_ready_i;
+  // incoming interface request
+  assign req_ready_o = req_ready;
 
-  // incoming interface //
-  ////////////////////////
-  assign req_ready_o = leaf_req_ready_i;
+  // TODO responses, leaf only for now, drop root
+  assign root_resp_ready_o = 1'b1;
+  assign leaf_resp_ready_o = resp_ready_i;
   assign resp_valid_o = leaf_resp_valid_i;
   assign resp_o = leaf_resp_i;
 
@@ -244,6 +277,12 @@ module tag_lookup_engine_table_lookups_write #(
   output logic            leaf_resp_ready_o,
   input  tag_write_resp_t leaf_resp_i
 );
+
+  // TODO
+  // This module will also require a read interface to enable folding back 0 to the root when
+  // possible... reading 512 leaf bits is not feasible with the 4-bit cache interface we are using..
+  // or instead, if as a result of a write into a 512 bit chunk aligned, the word becomes 0, this in the
+  // write resp...
 
   // outgoing root interface //
   /////////////////////////////
