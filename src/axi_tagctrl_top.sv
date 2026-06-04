@@ -298,27 +298,42 @@ module axi_tagctrl_top #(
     .tag_data_req_t(tagc_oup_t),
     .tag_write_resp_t(slv_b_chan_t),
     .tag_read_resp_t(tagc_inp_t),
+    `ifndef PULP_LLC
+    .cache_req_words(cache_req_words),
+    `endif
     .AxiIdWidth(AxiCfg.SlvPortIdWidth-1),
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
     .AxiUserWidth(AxiUserWidth),
-    `ifndef PULP_LLC
-    .cache_req_words(cache_req_words),
-    `endif
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t)
     `ifdef PULP_LLC
     , .tagc_desc_t(tagc_desc_t)
     `endif
+    // .GROUPING_FACTOR = 512
+    // .TAGGED_CHUNK_SIZE = 16
+    // .COVERED_ALIGN = 8192
+    // .TAGGED_CHUNK_SIZE = 64
   ) i_tag_lookup_engine (
     .clk_i,
     .rst_ni,
-
+    .isolate_o(tagctrl_isolate),
+    .isolated_i(tagctrl_isolated),
+    .cached_start_addr_i,
+    .cached_end_addr_i,
+    // tag store configuration
+    .covered_base_addr_i(/*TODO*/),
+    .covered_top_addr_i(/*TODO*/),
+    .tag_store_base_addr_i(/*TODO*/),
     // incoming read tag request descriptor
     .read_req_valid_i(ax_desc_valid[0]),
     .read_req_ready_o(ax_desc_ready[0]),
     .read_req_i(ax_desc[0]),
+    // outgoing read response
+    .read_resp_valid_o(tagc_r_inp_valid),
+    .read_resp_ready_i(tagc_r_inp_ready),
+    .read_resp_o(tagc_r_inp),
     // incoming write tag request descriptor
     .write_req_valid_i(ax_desc_valid[1]),
     .write_req_ready_o(ax_desc_ready[1]),
@@ -327,22 +342,11 @@ module axi_tagctrl_top #(
     .write_data_req_valid_i(tagc_w_oup_valid),
     .write_data_req_ready_o(tagc_w_oup_ready),
     .write_data_req_i(tagc_w_oup),
-    // outgoing read response
-    .read_resp_valid_o(tagc_r_inp_valid),
-    .read_resp_ready_i(tagc_r_inp_ready),
-    .read_resp_o(tagc_r_inp),
     // outgoing write response
     .write_resp_valid_o(tagc_b_chan_valid),
     .write_resp_ready_i(tagc_b_chan_ready),
     .write_resp_o(tagc_b_chan),
-
-    .isolate_o(tagctrl_isolate),
-    .isolated_i(tagctrl_isolated),
-    .cached_start_addr_i,
-    .cached_end_addr_i,
-
-    //// tag store memory interfaces //
-    ///////////////////////////////////
+    // tag store memory interfaces
     .mem_req_o(tagc_req),
     .mem_resp_i(tagc_resp)
   );

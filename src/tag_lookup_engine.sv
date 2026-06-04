@@ -1,5 +1,61 @@
+// This module dynamically produces derivative configuration values
+// based off of the user provided addresses for covered region and
+// store region, and produces configuration errors when relevant.
+module tag_lookup_engine_config #(
+  parameter type addr_t = logic [63:0],
+  parameter int unsigned GROUPING_FACTOR = 512,
+  parameter int unsigned TAGGED_CHUNK_SIZE = 16,
+  parameter int unsigned COVERED_ALIGN = 8192,
+  parameter int unsigned TAG_STORE_ALIGN = 64
+) (
+  input  addr_t covered_base_addr_i,
+  input  addr_t covered_top_addr_i,
+  input  addr_t tag_store_base_addr_i,
 
-module table_lookups #(
+  output addr_t leaf_table_base_addr_o,
+  output addr_t root_table_base_addr_o,
+  output addr_t tag_store_top_addr_o,
+  output logic [2:0] error_o
+);
+
+  function automatic addr_t align_up(addr_t value, int unsigned align);
+    return (value + (align - 1)) & ~(align - 1);
+  endfunction
+
+  function automatic addr_t ceil_div(addr_t value, int unsigned divisor);
+    return (value + (divisor - 1)) / divisor;
+  endfunction
+
+  addr_t covered_size_bytes = covered_top_addr_i - covered_base_addr_i;
+  addr_t leaf_table_bits = ceil_div(covered_size_bytes, TAGGED_CHUNK_SIZE);
+  addr_t leaf_table_bytes = ceil_div(leaf_table_bits, 8);
+  addr_t root_table_bits = ceil_div(leaf_table_bits, GROUPING_FACTOR);
+  addr_t root_table_bytes = ceil_div(root_table_bits, 8);
+  addr_t root_table_end_addr;
+
+  assign leaf_table_base_addr_o = tag_store_base_addr_i;
+  assign root_table_base_addr_o =
+    align_up(leaf_table_base_addr_o + leaf_table_bytes, TAG_STORE_ALIGN);
+  assign root_table_end_addr = root_table_base_addr_o + root_table_bytes;
+  assign tag_store_top_addr_o = align_up(root_table_end_addr, TAG_STORE_ALIGN);
+
+  assign error_o =
+    (covered_top_addr_i < covered_base_addr_i)         ? 3'd1 :
+    (tag_store_top_addr_o < tag_store_base_addr_i)     ? 3'd2 :
+    (|(covered_base_addr_i & (COVERED_ALIGN - 1)))     ? 3'd3 :
+    (|(covered_top_addr_i & (COVERED_ALIGN - 1)))      ? 3'd4 :
+    (|(tag_store_base_addr_i & (TAG_STORE_ALIGN - 1))) ? 3'd5 :
+                                                         3'd0;
+
+endmodule
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// This module produces leaf and root requests associated with an incoming
+// tag request
+module tag_lookup_engine_table_lookups #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
@@ -124,6 +180,16 @@ module table_lookups #(
 
 endmodule
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// This module is the toplevel module of the tag lookup engine
+// it instanciates
+// * a tag_lookup_engine_config module
+// * tag_lookup_engine_table_lookups module
+// * per lookup stream caches TODO
+// * an axi_mux to produce a single stream of tag requests TODO
 module tag_lookup_engine #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
@@ -138,10 +204,14 @@ module tag_lookup_engine #(
   parameter int unsigned AxiUserWidth = 64'd0,
   parameter type mem_req_t = logic,
   parameter type mem_resp_t = logic,
-  parameter type axi_addr_t = logic [AxiAddrWidth-1:0]
+  parameter type axi_addr_t = logic [AxiAddrWidth-1:0],
   `ifdef PULP_LLC
-  , parameter type tagc_desc_t = logic
+  parameter type tagc_desc_t = logic,
   `endif
+  parameter int unsigned GROUPING_FACTOR = 512,
+  parameter int unsigned TAGGED_CHUNK_SIZE = 16,
+  parameter int unsigned COVERED_ALIGN = 8192,
+  parameter int unsigned TAG_STORE_ALIGN = 64
 ) (
   // Rising-edge clock of all ports.
   input logic clk_i,
@@ -157,6 +227,8 @@ module tag_lookup_engine #(
 
   // tag store signals //
   ///////////////////////
+  input axi_addr_t covered_base_addr_i,
+  input axi_addr_t covered_top_addr_i,
   input axi_addr_t tag_store_base_addr_i,
 
   // tag controller slave interfaces //
@@ -165,6 +237,10 @@ module tag_lookup_engine #(
   input logic read_req_valid_i,
   output logic read_req_ready_o,
   input tag_req_t read_req_i,
+  // outgoing read response
+  output logic read_resp_valid_o,
+  input logic read_resp_ready_i,
+  output tag_read_resp_t read_resp_o,
   // incoming tag write request descriptor
   input logic write_req_valid_i,
   output logic write_req_ready_o,
@@ -177,10 +253,6 @@ module tag_lookup_engine #(
   output logic write_resp_valid_o,
   input logic write_resp_ready_i,
   output tag_write_resp_t write_resp_o,
-  // outgoing read response
-  output logic read_resp_valid_o,
-  input logic read_resp_ready_i,
-  output tag_read_resp_t read_resp_o,
 
   // tag store master interfaces //
   /////////////////////////////////
@@ -215,12 +287,30 @@ module tag_lookup_engine #(
   `AXI_TYPEDEF_R_CHAN_T(mst_r_chan_t, axi_data_t, axi_mst_id_t, axi_user_t)
 
   //////////////////////////////////////////////////////////////////////////////
-  // local signals for per table-level accesses (root, leaf)
+  // tag lookup engine configuration module
   //////////////////////////////////////////////////////////////////////////////
 
   axi_addr_t root_table_base_addr, leaf_table_base_addr;
-  assign leaf_table_base_addr = tag_store_base_addr_i;
-  assign root_table_base_addr = 'h0; /* TODO */
+
+  tag_lookup_engine_config #(
+    .addr_t(axi_addr_t),
+    .GROUPING_FACTOR,
+    .TAGGED_CHUNK_SIZE,
+    .COVERED_ALIGN,
+    .TAG_STORE_ALIGN
+  ) i_tag_lookup_engine_config (
+    .covered_base_addr_i,
+    .covered_top_addr_i,
+    .tag_store_base_addr_i,
+    .leaf_table_base_addr_o(leaf_table_base_addr),
+    .root_table_base_addr_o(root_table_base_addr),
+    .tag_store_top_addr_o(/* TODO */),
+    .error_o(/* TODO */)
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  // local signals for per table-level accesses (root, leaf)
+  //////////////////////////////////////////////////////////////////////////////
 
   logic root_read_req_valid, leaf_read_req_valid;
   logic root_read_req_ready, leaf_read_req_ready;
@@ -244,13 +334,13 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
   // generate per table-level accesses
   //////////////////////////////////////////////////////////////////////////////
-  table_lookups #(
+  tag_lookup_engine_table_lookups #(
     .tag_req_t,
     .tag_data_req_t,
     .tag_write_resp_t,
     .tag_read_resp_t,
     .axi_addr_t
-  ) i_table_lookups (
+  ) i_tag_lookup_engine_table_lookups (
     .clk_i,
     .rst_ni,
     // incoming requests interface
