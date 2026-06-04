@@ -60,7 +60,9 @@ module tag_lookup_engine_table_lookups #(
   parameter type tag_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
   parameter type tag_read_resp_t = logic,
-  parameter type axi_addr_t = logic
+  parameter type axi_addr_t = logic,
+  parameter int unsigned GROUPING_FACTOR = 512,
+  parameter int unsigned TAGGED_CHUNK_SIZE = 16
 ) (
   // Rising-edge clock of all ports.
   input logic clk_i,
@@ -139,27 +141,51 @@ module tag_lookup_engine_table_lookups #(
 );
 
   // TODO
-  // TODO split the incomming request into a root and a leaf access
+  // TODO handle responses from each channel to produce overall response
   // TODO handle hit-related abort where possible
   // TODO
 
-  // place holder, pass through as leaf only //
+  /////////////
+  // helpers //
+  /////////////
+
+  function automatic axi_addr_t addr_to_root_idx(axi_addr_t addr);
+    axi_addr_t leaf_idx = (addr / axi_addr_t'(TAGGED_CHUNK_SIZE)) / 8;
+    return leaf_idx / axi_addr_t'(GROUPING_FACTOR);
+  endfunction
+
+  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
+    desc_with_addr = desc;
+    desc_with_addr.a_x_addr = addr;
+    return desc_with_addr;
+  endfunction
+
+  ///////////////////
+  // root requests //
+  ///////////////////
+
+  assign root_read_req_valid_o = read_req_valid_i;
+  assign root_read_req_o = desc_with_addr(read_req_i, addr_to_root_idx(read_req_i.a_x_addr));
+
+  assign root_write_req_valid_o = write_req_valid_i;
+  assign root_write_req_o = desc_with_addr(write_req_i, addr_to_root_idx(write_req_i.a_x_addr));
+
+  assign root_write_data_req_valid_o = write_data_req_valid_i;
+  assign root_write_data_req_o = write_data_req_i;
+
+  assign root_read_resp_ready_o = 1'b1; // TODO consider responses
+  assign root_write_resp_ready_o = 1'b1; // TODO consider responses
+
   /////////////////////////////////////////////
-  // first, tie off the root (flat, leaf only)
-  // empty source, infinite sink
-  assign root_read_req_valid_o = 1'b0;
-  assign root_write_req_valid_o = 1'b0;
-  assign root_write_data_req_valid_o = 1'b0;
-  assign root_read_resp_ready_o= 1'b1;
-  assign root_write_resp_ready_o = 1'b1;
-  // then, simply pass through the incoming request as the leaf request
-  // DBG
-  //assign leaf_read_req_valid_o = 1'b0;
-  //assign leaf_write_req_valid_o = 1'b0;
-  //assign leaf_write_data_req_valid_o = 1'b0;
-  //assign leaf_read_resp_ready_o= 1'b1;
-  //assign leaf_write_resp_ready_o = 1'b1;
-  //
+  // tie off the root, empty source, infinite sink
+  //assign root_read_req_valid_o = 1'b0;
+  //assign root_write_req_valid_o = 1'b0;
+  //assign root_write_data_req_valid_o = 1'b0;
+  //assign root_read_resp_ready_o= 1'b1;
+  //assign root_write_resp_ready_o = 1'b1;
+  /////////////////////////////////////////////
+
+  // pass through the incoming request as the leaf request
   assign leaf_read_req_valid_o = read_req_valid_i;
   assign read_req_ready_o = leaf_read_req_ready_i;
   assign leaf_read_req_o = read_req_i;
@@ -337,7 +363,9 @@ module tag_lookup_engine #(
     .tag_data_req_t,
     .tag_write_resp_t,
     .tag_read_resp_t,
-    .axi_addr_t
+    .axi_addr_t,
+    .GROUPING_FACTOR,
+    .TAGGED_CHUNK_SIZE
   ) i_tag_lookup_engine_table_lookups (
     .clk_i,
     .rst_ni,
