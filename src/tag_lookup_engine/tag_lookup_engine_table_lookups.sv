@@ -1,3 +1,14 @@
+module helpers #(
+  parameter type tag_req_t = logic,
+  parameter type axi_addr_t = logic
+)();
+  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
+    tag_req_t ret = desc;
+    ret.a_x_addr = addr;
+    return ret;
+  endfunction
+endmodule
+
 module tag_lookup_engine_table_lookups #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
@@ -61,11 +72,11 @@ module tag_lookup_engine_table_lookups #(
 
   // helpers //
   function automatic axi_addr_t addr_to_leaf_idx(axi_addr_t addr);
-    return (addr / axi_addr_t'(TAGGED_CHUNK_SIZE)) / 8;
+    return (addr >> $clog2(TAGGED_CHUNK_SIZE)) >> 3;
   endfunction
   function automatic axi_addr_t addr_to_root_idx(axi_addr_t addr);
     axi_addr_t leaf_idx = addr_to_leaf_idx(addr);
-    return leaf_idx / axi_addr_t'(GROUPING_FACTOR);
+    return leaf_idx >> $clog2(GROUPING_FACTOR);
   endfunction
   // tag reads //
   tag_lookup_engine_table_lookups_read #(
@@ -182,13 +193,9 @@ module tag_lookup_engine_table_lookups_read #(
   input  tag_read_resp_t leaf_resp_i
 );
 
-  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
-    desc_with_addr = desc;
-    desc_with_addr.a_x_addr = addr;
-    return desc_with_addr;
-  endfunction
+  helpers#(.tag_req_t, .axi_addr_t) h ();
 
-  // remember if we sent a request on outgoing interface
+  // register if we sent a request on outgoing interface
   logic root_sent_q, root_sent_d;
   logic leaf_sent_q, leaf_sent_d;
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -220,7 +227,7 @@ module tag_lookup_engine_table_lookups_read #(
 
   // outgoing interface requests
   assign root_req_valid_o = root_req_valid;
-  assign root_req_o = desc_with_addr(req_i, root_idx_i);
+  assign root_req_o = h.desc_with_addr(req_i, root_idx_i);
   assign leaf_req_valid_o = leaf_req_valid;
   assign leaf_req_o = req_i;
   // incoming interface request
@@ -278,30 +285,91 @@ module tag_lookup_engine_table_lookups_write #(
   input  tag_write_resp_t leaf_resp_i
 );
 
-  // TODO
-  // This module will also require a read interface to enable folding back 0 to the root when
-  // possible... reading 512 leaf bits is not feasible with the 4-bit cache interface we are using..
-  // or instead, if as a result of a write into a 512 bit chunk aligned, the word becomes 0, this in the
-  // write resp...
+  localparam int unsigned ROOT_DATA_W = $bits(data_i.data);
+  localparam int unsigned ROOT_STRB_W = $bits(data_i.strb);
 
-  // outgoing root interface //
-  /////////////////////////////
-  assign root_req_valid_o = 1'b0;
-  assign root_data_valid_o = 1'b0;
+  helpers #(
+    .tag_req_t(tag_req_t),
+    .axi_addr_t(axi_addr_t)
+  ) h ();
+
+  // book keeping latches:
+  // did the root/leaf request and data get sent?
+  logic root_req_sent_q, root_req_sent_d;
+  logic root_data_sent_q, root_data_sent_d;
+  logic leaf_req_sent_q, leaf_req_sent_d;
+  logic leaf_data_sent_q, leaf_data_sent_d;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      root_req_sent_q <= 1'b0;
+      root_data_sent_q <= 1'b0;
+      leaf_req_sent_q <= 1'b0;
+      leaf_data_sent_q <= 1'b0;
+    end else begin
+      root_req_sent_q <= root_req_sent_d;
+      root_data_sent_q <= root_data_sent_d;
+      leaf_req_sent_q <= leaf_req_sent_d;
+      leaf_data_sent_q <= leaf_data_sent_d;
+    end
+  end
+
+  // internal signals to determine root/leaf sending was dealt with
+  logic root_needed, root_done, leaf_done;
+  assign root_needed = |(data_i.bit_en & data_i.data);
+  assign root_done = !root_needed || (root_req_sent_q && root_data_sent_q);
+  assign leaf_done = leaf_req_sent_q && leaf_data_sent_q;
+
+  localparam int unsigned ROOT_BIT_IDX_W = (ROOT_DATA_W > 1) ? $clog2(ROOT_DATA_W) : 1;
+  logic [ROOT_BIT_IDX_W-1:0] root_bit_idx;
+  assign root_bit_idx = root_idx_i[ROOT_BIT_IDX_W-1:0];
+
+  // outgoing root interface
+  assign root_req_valid_o = req_valid_i && root_needed && !root_req_sent_q;
+  assign root_req_o = h.desc_with_addr(req_i, root_idx_i);
+
+  assign root_data_valid_o = data_valid_i && root_needed && !root_data_sent_q;
+  assign root_data_o.data = ROOT_DATA_W'('b1) << root_bit_idx;
+  assign root_data_o.bit_en = ROOT_DATA_W'('b1) << root_bit_idx;
+  assign root_data_o.strb = ROOT_STRB_W'('b1) << (root_bit_idx >> 3);
+
   assign root_resp_ready_o = 1'b1;
 
-  // outgoing leaf interface //
-  /////////////////////////////
-  assign leaf_req_valid_o = req_valid_i;
+  // outgoing leaf interface
+  assign leaf_req_valid_o = req_valid_i  && !leaf_req_sent_q;
   assign leaf_req_o = req_i;
-  assign leaf_data_valid_o = data_valid_i;
+
+  assign leaf_data_valid_o = data_valid_i && !leaf_data_sent_q;
   assign leaf_data_o = data_i;
+
   assign leaf_resp_ready_o = resp_ready_i;
 
-  // incoming interface //
-  ////////////////////////
-  assign req_ready_o = leaf_req_ready_i;
-  assign data_ready_o = leaf_data_ready_i;
+  // state updates
+  always_comb begin
+    root_req_sent_d = root_req_sent_q;
+    root_data_sent_d = root_data_sent_q;
+    leaf_req_sent_d = leaf_req_sent_q;
+    leaf_data_sent_d = leaf_data_sent_q;
+
+    if (root_req_valid_o && root_req_ready_i) root_req_sent_d = 1'b1;
+    if (root_data_valid_o && root_data_ready_i) root_data_sent_d = 1'b1;
+
+    if (leaf_req_valid_o && leaf_req_ready_i) leaf_req_sent_d = 1'b1;
+    if (leaf_data_valid_o && leaf_data_ready_i) leaf_data_sent_d = 1'b1;
+
+    // transaction sent, reset for next request on incoming interface
+    if (req_ready_o && req_valid_i) begin
+      root_req_sent_d = 1'b0;
+      root_data_sent_d = 1'b0;
+      leaf_req_sent_d = 1'b0;
+      leaf_data_sent_d = 1'b0;
+    end
+  end
+
+  // incoming interface
+  assign req_ready_o = root_done && leaf_done;
+  assign data_ready_o = root_done && leaf_done;
+  // TODO consider root responses
   assign resp_valid_o = leaf_resp_valid_i;
   assign resp_o = leaf_resp_i;
 
