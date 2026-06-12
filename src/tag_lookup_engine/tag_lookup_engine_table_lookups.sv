@@ -15,7 +15,7 @@ module tag_lookup_engine_table_lookups #(
   parameter type tag_write_resp_t = logic,
   parameter type tag_read_resp_t = logic,
   parameter type axi_addr_t = logic,
-  parameter int unsigned GROUPING_FACTOR = 512,
+  parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16
 ) (
   input logic clk_i,
@@ -163,7 +163,7 @@ module tag_lookup_engine_table_lookups_read #(
   parameter type tag_req_t = logic,
   parameter type tag_read_resp_t = logic,
   parameter type axi_addr_t = logic,
-  parameter int unsigned GROUPING_FACTOR = 512,
+  parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16
 ) (
   input  logic           clk_i,
@@ -246,7 +246,7 @@ module tag_lookup_engine_table_lookups_write #(
   parameter type tag_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
   parameter type axi_addr_t = logic,
-  parameter int unsigned GROUPING_FACTOR = 512,
+  parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16
 ) (
   input  logic            clk_i,

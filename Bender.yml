@@ -28,6 +28,7 @@ sources:
   - src/llc_cache_wrapper.sv
   - src/tag_lookup_engine/tag_lookup_engine.sv
   - src/tag_lookup_engine/tag_lookup_engine_config.sv
+  - src/tag_lookup_engine/tag_lookup_engine_hpdcache_configs.sv
   - src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv
   # Level 1
   - src/axi_tagc_read_unit.sv

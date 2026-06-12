@@ -17,7 +17,6 @@ module axi_tagctrl_top #(
     /// Tag Cache base address in memory. Location of the Tag Cache
     /// structure
     parameter int unsigned TagCacheMemBase  = 0,
-    parameter int unsigned cache_req_words = 64'd4,
     /// The set-associativity of the Tag Cache.
     ///
     /// This parameter determines how many ways/sets will be instantiated.
@@ -298,9 +297,6 @@ module axi_tagctrl_top #(
     .tag_data_req_t(tagc_oup_t),
     .tag_write_resp_t(slv_b_chan_t),
     .tag_read_resp_t(tagc_inp_t),
-    `ifndef PULP_LLC
-    .cache_req_words(cache_req_words),
-    `endif
     .AxiIdWidth(AxiCfg.SlvPortIdWidth-1),
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
@@ -311,9 +307,9 @@ module axi_tagctrl_top #(
     `ifdef PULP_LLC
     , .tagc_desc_t(tagc_desc_t)
     `endif
-    // .GROUPING_FACTOR = 512
+    // .GROUPING_FACTOR = 256
     // .TAGGED_CHUNK_SIZE = 16
-    // .COVERED_ALIGN = 8192
+    // .COVERED_ALIGN = 4096
     // .TAGGED_CHUNK_SIZE = 64
   ) i_tag_lookup_engine (
     .clk_i,
