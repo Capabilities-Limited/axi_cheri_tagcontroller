@@ -2,16 +2,13 @@
 // it instanciates
 // * a tag_lookup_engine_config module
 // * tag_lookup_engine_table_lookups module
-// * per lookup stream caches TODO
-// * an axi_mux to produce a single stream of tag requests TODO
+// * per lookup stream caches
+// * an axi_mux to produce a single stream of tag requests
 module tag_lookup_engine #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
   parameter type tag_read_resp_t = logic,
-  `ifndef PULP_LLC
-  parameter int unsigned cache_req_words = 64'd4,
-  `endif
   parameter int unsigned AxiIdWidth = 64'd5,
   parameter int unsigned AxiAddrWidth = 64'd64,
   parameter int unsigned AxiDataWidth = 64'd64,
@@ -22,9 +19,9 @@ module tag_lookup_engine #(
   `ifdef PULP_LLC
   parameter type tagc_desc_t = logic,
   `endif
-  parameter int unsigned GROUPING_FACTOR = 512,
+  parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16,
-  parameter int unsigned COVERED_ALIGN = 8192,
+  parameter int unsigned COVERED_ALIGN = 4096,
   parameter int unsigned TAG_STORE_ALIGN = 64
 ) (
   // Rising-edge clock of all ports.
@@ -228,14 +225,13 @@ module tag_lookup_engine #(
     .AxiAddrWidth,
     .AxiDataWidth,
     .AxiUserWidth,
-    `ifndef PULP_LLC
-    .cache_req_words,
-    `endif
     .mem_req_t,
     .mem_resp_t,
     .axi_addr_t
     `ifdef PULP_LLC
     , .tagc_desc_t
+    `else
+    , .HPDcacheUserCfg(root_hpdcache_user_cfg())
     `endif
   ) i_root_tag_cache_wrapper (
     .clk_i,
@@ -287,14 +283,13 @@ module tag_lookup_engine #(
     .AxiAddrWidth,
     .AxiDataWidth,
     .AxiUserWidth,
-    `ifndef PULP_LLC
-    .cache_req_words,
-    `endif
     .mem_req_t,
     .mem_resp_t,
     .axi_addr_t
     `ifdef PULP_LLC
     , .tagc_desc_t
+    `else
+    , .HPDcacheUserCfg(leaf_hpdcache_user_cfg())
     `endif
   ) i_leaf_tag_cache_wrapper (
     .clk_i,

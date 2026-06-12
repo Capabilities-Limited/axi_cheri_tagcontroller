@@ -210,14 +210,14 @@ module hpdcache_wrapper #(
     parameter type tag_data_req_t = logic,
     parameter type tag_write_resp_t = logic,
     parameter type tag_read_resp_t = logic,
-    parameter int unsigned cache_req_words = 64'd4,
     parameter int unsigned AxiIdWidth = 64'd6,
     parameter int unsigned AxiAddrWidth = 64'd64,
     parameter int unsigned AxiDataWidth = 64'd64,
     parameter int unsigned AxiUserWidth = 64'd1,
     parameter type mem_req_t = logic,
     parameter type mem_resp_t = logic,
-    parameter type axi_addr_t = logic [AxiAddrWidth-1:0]
+    parameter type axi_addr_t = logic [AxiAddrWidth-1:0],
+    parameter hpdcache_pkg::hpdcache_user_cfg_t HPDcacheUserCfg = 0
   ) (
     // Rising-edge clock of all ports.
     input logic clk_i,
@@ -263,60 +263,6 @@ module hpdcache_wrapper #(
   // configurations and types
   //////////////////////////////////////////////////////////////////////////////
 
-  function automatic hpdcache_pkg::hpdcache_user_cfg_t hpdcacheSetConfig();
-    hpdcache_pkg::hpdcache_user_cfg_t userCfg;
-    userCfg.nRequesters = 2;
-    userCfg.paWidth = 49;
-    userCfg.wordWidth = 1;
-    userCfg.wordUserWidth = 1;
-    `ifdef VERILATOR
-    userCfg.sets = 2;
-    userCfg.ways = 2;
-    `else
-    userCfg.sets = 256; // 256x4x16=16KB
-    userCfg.ways = 4;
-    `endif
-    userCfg.clWords = 256;
-    userCfg.reqWords = cache_req_words;
-    userCfg.reqTransIdWidth = 6;
-    userCfg.reqSrcIdWidth = 2;  // Up to 4 requesters
-    userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_PLRU;
-    userCfg.dataWaysPerRamWord = 1;
-    userCfg.dataSetsPerRam = userCfg.sets;
-    userCfg.dataRamByteEnable = 1'b1; // XXX TODO check the 1'b0 option
-    userCfg.accessWords = 64;
-    userCfg.mshrSets = 1;
-    userCfg.mshrWays = 4;
-    userCfg.mshrWaysPerRamWord = 2;
-    userCfg.mshrSetsPerRam = 32;
-    userCfg.mshrRamByteEnable = 1'b1; // XXX TODO check the 1'b0 option
-    userCfg.mshrUseRegbank = 1;
-    userCfg.cbufEntries = 8;
-    userCfg.refillCoreRspFeedthrough = 1'b1;
-    //userCfg.refillFifoDepth = 2;
-    userCfg.refillFifoDepth = 16;
-    userCfg.wbufDirEntries = 8;
-    userCfg.wbufDataEntries = 4;
-    userCfg.wbufWords = 2;
-    userCfg.wbufTimecntWidth = 3;
-    userCfg.rtabEntries = 4;
-    userCfg.flushEntries = 4;
-    userCfg.flushFifoDepth = 2;
-    userCfg.memAddrWidth = 64;
-    //userCfg.memIdWidth = AxiIdWidth + 1;
-    userCfg.memIdWidth = 4;
-    userCfg.memDataWidth = 64;
-    userCfg.wtEn = 1'b0;
-    userCfg.wbEn = 1'b1;
-    userCfg.lowLatency = 1'b0;
-    userCfg.userEn = 1'b0;
-    userCfg.capAmoEn = 1'b0;
-    userCfg.eccEn = 1'b0;  /*FIXME add additional CVA6 parameter*/
-    userCfg.eccScrubberEn = 1'b0;  /*FIXME: add additional CVA6 parameter*/
-    return userCfg;
-  endfunction
-
-  localparam hpdcache_pkg::hpdcache_user_cfg_t HPDcacheUserCfg = hpdcacheSetConfig();
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
       HPDcacheUserCfg
   );
