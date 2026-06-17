@@ -9,7 +9,7 @@ package:
 
 dependencies:
   hpdcache: { git: "https://github.com/Capabilities-Limited/cv-hpdcache.git", rev: "wip-hpdcache-as-tagcache" }
-  axi: { git: "https://github.com/pulp-platform/axi.git", version: "0.39.1" }
+  axi: { git: "https://github.com/pulp-platform/axi.git", rev: "697f13ff67153a5243e347f2d1992a125018b6c2" }
   common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: "1.32.0" }
   common_verification: { git: "https://github.com/pulp-platform/common_verification.git", version: "0.2.0" }
   register_interface: { git: "https://github.com/pulp-platform/register_interface.git", version: "0.3.6" }
