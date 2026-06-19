@@ -1,6 +1,6 @@
-function automatic hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_user_cfg();
+function automatic hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_user_cfg(int unsigned nRequesters);
   hpdcache_pkg::hpdcache_user_cfg_t userCfg;
-  userCfg.nRequesters = 2;
+  userCfg.nRequesters = nRequesters;
   userCfg.paWidth = 49;
   userCfg.wordWidth = 1;
   userCfg.wordUserWidth = 1;
@@ -44,9 +44,9 @@ function automatic hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_user_cfg();
   return userCfg;
 endfunction
 
-function automatic hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_user_cfg();
+function automatic hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_user_cfg(int unsigned nRequesters);
   hpdcache_pkg::hpdcache_user_cfg_t userCfg;
-  userCfg.nRequesters = 2;
+  userCfg.nRequesters = nRequesters;
   userCfg.paWidth = 49;
   userCfg.wordWidth = 1;
   userCfg.wordUserWidth = 1;

@@ -37,28 +37,28 @@ module tag_lookup_engine_table_lookups #(
   input  logic            write_resp_ready_i,
   output tag_write_resp_t write_resp_o,
   // root level interface
-  output logic            root_read_req_valid_o,
-  input  logic            root_read_req_ready_i,
-  output tag_req_t        root_read_req_o,
-  input  logic            root_read_resp_valid_i,
-  output logic            root_read_resp_ready_o,
-  input  tag_read_resp_t  root_read_resp_i,
-  output logic            root_write_req_valid_o,
-  input  logic            root_write_req_ready_i,
-  output tag_req_t        root_write_req_o,
-  output logic            root_write_data_req_valid_o,
-  input  logic            root_write_data_req_ready_i,
-  output tag_data_req_t   root_write_data_req_o,
-  input  logic            root_write_resp_valid_i,
-  output logic            root_write_resp_ready_o,
-  input  tag_write_resp_t root_write_resp_i,
+  output logic            root_read_req_valid_o[2],
+  input  logic            root_read_req_ready_i[2],
+  output tag_req_t        root_read_req_o[2],
+  input  logic            root_read_resp_valid_i[2],
+  output logic            root_read_resp_ready_o[2],
+  input  tag_read_resp_t  root_read_resp_i[2],
+  output logic            root_write_req_valid_o[2],
+  input  logic            root_write_req_ready_i[2],
+  output tag_req_t        root_write_req_o[2],
+  output logic            root_write_data_req_valid_o[2],
+  input  logic            root_write_data_req_ready_i[2],
+  output tag_data_req_t   root_write_data_req_o[2],
+  input  logic            root_write_resp_valid_i[2],
+  output logic            root_write_resp_ready_o[2],
+  input  tag_write_resp_t root_write_resp_i[2],
   // leaf level interface
-  output logic            leaf_read_req_valid_o,
-  input  logic            leaf_read_req_ready_i,
-  output tag_req_t        leaf_read_req_o,
-  input  logic            leaf_read_resp_valid_i,
-  output logic            leaf_read_resp_ready_o,
-  input  tag_read_resp_t  leaf_read_resp_i,
+  output logic            leaf_read_req_valid_o[2],
+  input  logic            leaf_read_req_ready_i[2],
+  output tag_req_t        leaf_read_req_o[2],
+  input  logic            leaf_read_resp_valid_i[2],
+  output logic            leaf_read_resp_ready_o[2],
+  input  tag_read_resp_t  leaf_read_resp_i[2],
   output logic            leaf_write_req_valid_o,
   input  logic            leaf_write_req_ready_i,
   output tag_req_t        leaf_write_req_o,
@@ -99,21 +99,23 @@ module tag_lookup_engine_table_lookups #(
     .resp_ready_i(read_resp_ready_i),
     .resp_o(read_resp_o),
     // outgoing root interface
-    .root_req_valid_o(root_read_req_valid_o),
-    .root_req_ready_i(root_read_req_ready_i),
-    .root_req_o(root_read_req_o),
-    .root_resp_valid_i(root_read_resp_valid_i),
-    .root_resp_ready_o(root_read_resp_ready_o),
-    .root_resp_i(root_read_resp_i),
+    .root_req_valid_o(root_read_req_valid_o[0]),
+    .root_req_ready_i(root_read_req_ready_i[0]),
+    .root_req_o(root_read_req_o[0]),
+    .root_resp_valid_i(root_read_resp_valid_i[0]),
+    .root_resp_ready_o(root_read_resp_ready_o[0]),
+    .root_resp_i(root_read_resp_i[0]),
     // outgoing leaf interface
-    .leaf_req_valid_o(leaf_read_req_valid_o),
-    .leaf_req_ready_i(leaf_read_req_ready_i),
-    .leaf_req_o(leaf_read_req_o),
-    .leaf_resp_valid_i(leaf_read_resp_valid_i),
-    .leaf_resp_ready_o(leaf_read_resp_ready_o),
-    .leaf_resp_i(leaf_read_resp_i)
+    .leaf_req_valid_o(leaf_read_req_valid_o[0]),
+    .leaf_req_ready_i(leaf_read_req_ready_i[0]),
+    .leaf_req_o(leaf_read_req_o[0]),
+    .leaf_resp_valid_i(leaf_read_resp_valid_i[0]),
+    .leaf_resp_ready_o(leaf_read_resp_ready_o[0]),
+    .leaf_resp_i(leaf_read_resp_i[0])
   );
   // tag writes //
+  // TODO, attach root_read_ifc[1] for root lookups
+  // TODO, probably no need for a leaf_read_ifc[1]... simplify engine ifc
   tag_lookup_engine_table_lookups_write #(
     .tag_req_t,
     .tag_data_req_t,
@@ -137,15 +139,15 @@ module tag_lookup_engine_table_lookups #(
     .resp_ready_i(write_resp_ready_i),
     .resp_o(write_resp_o),
     // outgoing root interface
-    .root_req_valid_o(root_write_req_valid_o),
-    .root_req_ready_i(root_write_req_ready_i),
-    .root_req_o(root_write_req_o),
-    .root_data_valid_o(root_write_data_req_valid_o),
-    .root_data_ready_i(root_write_data_req_ready_i),
-    .root_data_o(root_write_data_req_o),
-    .root_resp_valid_i(root_write_resp_valid_i),
-    .root_resp_ready_o(root_write_resp_ready_o),
-    .root_resp_i(root_write_resp_i),
+    .root_req_valid_o(root_write_req_valid_o[0]),
+    .root_req_ready_i(root_write_req_ready_i[0]),
+    .root_req_o(root_write_req_o[0]),
+    .root_data_valid_o(root_write_data_req_valid_o[0]),
+    .root_data_ready_i(root_write_data_req_ready_i[0]),
+    .root_data_o(root_write_data_req_o[0]),
+    .root_resp_valid_i(root_write_resp_valid_i[0]),
+    .root_resp_ready_o(root_write_resp_ready_o[0]),
+    .root_resp_i(root_write_resp_i[0]),
     // outgoing leaf interface
     .leaf_req_valid_o(leaf_write_req_valid_o),
     .leaf_req_ready_i(leaf_write_req_ready_i),
@@ -157,6 +159,9 @@ module tag_lookup_engine_table_lookups #(
     .leaf_resp_ready_o(leaf_write_resp_ready_o),
     .leaf_resp_i(leaf_write_resp_i)
   );
+
+  // TODO
+  // root_write_ifc[1] to be used by the fold zero logic
 
 endmodule
 

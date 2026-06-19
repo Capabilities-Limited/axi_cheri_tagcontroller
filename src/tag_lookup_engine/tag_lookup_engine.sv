@@ -123,21 +123,21 @@ module tag_lookup_engine #(
   // local signals for per table-level accesses (root, leaf)
   //////////////////////////////////////////////////////////////////////////////
 
-  logic root_read_req_valid, leaf_read_req_valid;
-  logic root_read_req_ready, leaf_read_req_ready;
-  tag_req_t root_read_req, leaf_read_req;
-  logic root_write_req_valid, leaf_write_req_valid;
-  logic root_write_req_ready, leaf_write_req_ready;
-  tag_req_t root_write_req, leaf_write_req;
-  logic root_write_data_req_valid, leaf_write_data_req_valid;
-  logic root_write_data_req_ready, leaf_write_data_req_ready;
-  tag_data_req_t root_write_data_req, leaf_write_data_req;
-  logic root_write_resp_valid, leaf_write_resp_valid;
-  logic root_write_resp_ready, leaf_write_resp_ready;
-  tag_write_resp_t root_write_resp, leaf_write_resp;
-  logic root_read_resp_valid, leaf_read_resp_valid;
-  logic root_read_resp_ready, leaf_read_resp_ready;
-  tag_read_resp_t root_read_resp, leaf_read_resp;
+  logic root_read_req_valid[2], leaf_read_req_valid[2];
+  logic root_read_req_ready[2], leaf_read_req_ready[2];
+  tag_req_t root_read_req[2], leaf_read_req[2];
+  logic root_write_req_valid[2], leaf_write_req_valid;
+  logic root_write_req_ready[2], leaf_write_req_ready;
+  tag_req_t root_write_req[2], leaf_write_req;
+  logic root_write_data_req_valid[2], leaf_write_data_req_valid;
+  logic root_write_data_req_ready[2], leaf_write_data_req_ready;
+  tag_data_req_t root_write_data_req[2], leaf_write_data_req;
+  logic root_write_resp_valid[2], leaf_write_resp_valid;
+  logic root_write_resp_ready[2], leaf_write_resp_ready;
+  tag_write_resp_t root_write_resp[2], leaf_write_resp;
+  logic root_read_resp_valid[2], leaf_read_resp_valid[2];
+  logic root_read_resp_ready[2], leaf_read_resp_ready[2];
+  tag_read_resp_t root_read_resp[2], leaf_read_resp[2];
 
   mem_req_t root_mem_req, leaf_mem_req;
   mem_resp_t root_mem_resp, leaf_mem_resp;
@@ -212,6 +212,8 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
 
   // root accesses
+  localparam int unsigned nRootReadPorts = 64'd2;
+  localparam int unsigned nRootWritePorts = 64'd2;
   `ifndef PULP_LLC
   hpdcache_wrapper #(
   `else
@@ -221,6 +223,8 @@ module tag_lookup_engine #(
     .tag_data_req_t,
     .tag_write_resp_t,
     .tag_read_resp_t,
+    .nReadPorts(nRootReadPorts),
+    .nWritePorts(nRootWritePorts),
     .AxiIdWidth(AxiIdWidth-1),
     .AxiAddrWidth,
     .AxiDataWidth,
@@ -231,7 +235,7 @@ module tag_lookup_engine #(
     `ifdef PULP_LLC
     , .tagc_desc_t
     `else
-    , .HPDcacheUserCfg(root_hpdcache_user_cfg())
+    , .HPDcacheUserCfg(root_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts))
     `endif
   ) i_root_tag_cache_wrapper (
     .clk_i,
@@ -270,6 +274,8 @@ module tag_lookup_engine #(
   );
 
   // leaf accesses
+  localparam int unsigned nLeafReadPorts = 64'd2;
+  localparam int unsigned nLeafWritePorts = 64'd1;
   `ifndef PULP_LLC
   hpdcache_wrapper #(
   `else
@@ -279,6 +285,8 @@ module tag_lookup_engine #(
     .tag_data_req_t,
     .tag_write_resp_t,
     .tag_read_resp_t,
+    .nReadPorts(nLeafReadPorts),
+    .nWritePorts(nLeafWritePorts),
     .AxiIdWidth(AxiIdWidth-1),
     .AxiAddrWidth,
     .AxiDataWidth,
@@ -289,7 +297,7 @@ module tag_lookup_engine #(
     `ifdef PULP_LLC
     , .tagc_desc_t
     `else
-    , .HPDcacheUserCfg(leaf_hpdcache_user_cfg())
+    , .HPDcacheUserCfg(leaf_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts))
     `endif
   ) i_leaf_tag_cache_wrapper (
     .clk_i,
@@ -300,21 +308,21 @@ module tag_lookup_engine #(
     .read_req_ready_o(leaf_read_req_ready),
     .read_req_i(leaf_read_req),
     // incoming write tag request descriptor
-    .write_req_valid_i(leaf_write_req_valid),
-    .write_req_ready_o(leaf_write_req_ready),
-    .write_req_i(leaf_write_req),
+    .write_req_valid_i({leaf_write_req_valid}),
+    .write_req_ready_o({leaf_write_req_ready}),
+    .write_req_i({leaf_write_req}),
     // incoming write data
-    .write_data_req_valid_i(leaf_write_data_req_valid),
-    .write_data_req_ready_o(leaf_write_data_req_ready),
-    .write_data_req_i(leaf_write_data_req),
+    .write_data_req_valid_i({leaf_write_data_req_valid}),
+    .write_data_req_ready_o({leaf_write_data_req_ready}),
+    .write_data_req_i({leaf_write_data_req}),
     // outgoing read response
     .read_resp_valid_o(leaf_read_resp_valid),
     .read_resp_ready_i(leaf_read_resp_ready),
     .read_resp_o(leaf_read_resp),
     // outgoing write response
-    .write_resp_valid_o(leaf_write_resp_valid),
-    .write_resp_ready_i(leaf_write_resp_ready),
-    .write_resp_o(leaf_write_resp),
+    .write_resp_valid_o({leaf_write_resp_valid}),
+    .write_resp_ready_i({leaf_write_resp_ready}),
+    .write_resp_o({leaf_write_resp}),
 
     .isolate_o,
     .isolated_i,
