@@ -4,6 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 module hpdcache_read_req_rsp_wrapper #(
     parameter hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = '0,
+    parameter type sid_t = logic [HPDcacheCfg.u.reqSrcIdWidth-1:0],
     parameter type tag_req_t = logic,
     parameter type tag_read_resp_t = logic,
     parameter type hpdcache_req_t = logic,
@@ -11,6 +12,8 @@ module hpdcache_read_req_rsp_wrapper #(
   ) (
     input logic clk_i,
     input logic rst_ni,
+
+    input sid_t sid_i,
 
     input logic read_req_valid_i,
     output logic read_req_ready_o,
@@ -26,6 +29,7 @@ module hpdcache_read_req_rsp_wrapper #(
     input logic hpdcache_read_resp_valid_i,
     input hpdcache_rsp_t hpdcache_read_resp_i
   );
+
 
   // remember how to shift read responses based on the address
   logic [$clog2($bits(read_resp_o.data))-1:0] shifts [(2**$bits(read_req_i.a_x_id))-1:0];
@@ -67,7 +71,7 @@ module hpdcache_read_req_rsp_wrapper #(
     req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
     req.be = 0; // read req, no byte enable
     req.size = 0;
-    req.sid = 0; // read requestor port idx
+    req.sid = sid_i;
     req.tid = desc.a_x_id;
     req.need_rsp = 1'b1;
     req.phys_indexed = 1'b1;
@@ -108,6 +112,7 @@ endmodule
 ////////////////////////////////////////////////////////////////////////////////
 module hpdcache_write_req_rsp_wrapper #(
     parameter hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = '0,
+    parameter type sid_t = logic [HPDcacheCfg.u.reqSrcIdWidth-1:0],
     parameter type tag_req_t = logic,
     parameter type tag_data_req_t = logic,
     parameter type tag_write_resp_t = logic,
@@ -116,6 +121,8 @@ module hpdcache_write_req_rsp_wrapper #(
   ) (
     input logic clk_i,
     input logic rst_ni,
+
+    input sid_t sid_i,
 
     input logic write_req_valid_i,
     output logic write_req_ready_o,
@@ -172,7 +179,7 @@ module hpdcache_write_req_rsp_wrapper #(
     req.op = hpdcache_pkg::HPDCACHE_REQ_STORE;
     req.be = wdata.bit_en >> sel;
     req.size = 0;
-    req.sid = 1; // write requestor port idx
+    req.sid = sid_i;
     req.tid = desc.a_x_id;
     req.need_rsp = 1'b1;
     req.phys_indexed = 1'b1;
@@ -210,6 +217,8 @@ module hpdcache_wrapper #(
     parameter type tag_data_req_t = logic,
     parameter type tag_write_resp_t = logic,
     parameter type tag_read_resp_t = logic,
+    parameter int unsigned nReadPorts = 64'd2,
+    parameter int unsigned nWritePorts = 64'd1,
     parameter int unsigned AxiIdWidth = 64'd6,
     parameter int unsigned AxiAddrWidth = 64'd64,
     parameter int unsigned AxiDataWidth = 64'd64,
@@ -227,25 +236,25 @@ module hpdcache_wrapper #(
     // tag controller slave interfaces //
     /////////////////////////////////////
     // incoming tag read request descriptor
-    input logic read_req_valid_i,
-    output logic read_req_ready_o,
-    input tag_req_t read_req_i,
+    input logic read_req_valid_i[nReadPorts],
+    output logic read_req_ready_o[nReadPorts],
+    input tag_req_t read_req_i[nReadPorts],
     // incoming tag write request descriptor
-    input logic write_req_valid_i,
-    output logic write_req_ready_o,
-    input tag_req_t write_req_i,
+    input logic write_req_valid_i[nWritePorts],
+    output logic write_req_ready_o[nWritePorts],
+    input tag_req_t write_req_i[nWritePorts],
     // incoming write data
-    input logic write_data_req_valid_i,
-    output logic write_data_req_ready_o,
-    input tag_data_req_t write_data_req_i,
+    input logic write_data_req_valid_i[nWritePorts],
+    output logic write_data_req_ready_o[nWritePorts],
+    input tag_data_req_t write_data_req_i[nWritePorts],
     // outgoing write response
-    output logic write_resp_valid_o,
-    input logic write_resp_ready_i,
-    output tag_write_resp_t write_resp_o,
+    output logic write_resp_valid_o[nWritePorts],
+    input logic write_resp_ready_i[nWritePorts],
+    output tag_write_resp_t write_resp_o[nWritePorts],
     // outgoing read response
-    output logic read_resp_valid_o,
-    input logic read_resp_ready_i,
-    output tag_read_resp_t read_resp_o,
+    output logic read_resp_valid_o[nReadPorts],
+    input logic read_resp_ready_i[nReadPorts],
+    output tag_read_resp_t read_resp_o[nReadPorts],
 
     // ctrl interfaces //
     /////////////////////
@@ -262,7 +271,6 @@ module hpdcache_wrapper #(
 
   // configurations and types
   //////////////////////////////////////////////////////////////////////////////
-
   localparam hpdcache_pkg::hpdcache_cfg_t HPDcacheCfg = hpdcache_pkg::hpdcacheBuildConfig(
       HPDcacheUserCfg
   );
@@ -396,47 +404,63 @@ module hpdcache_wrapper #(
   logic cache_rsp_valid [HPDcacheCfg.u.nRequesters];
   hpdcache_rsp_t cache_rsp [HPDcacheCfg.u.nRequesters];
 
-  // requestor 0: reads
-  hpdcache_read_req_rsp_wrapper #(
-    .HPDcacheCfg(HPDcacheCfg),
-    .tag_req_t(tag_req_t),
-    .tag_read_resp_t(tag_read_resp_t),
-    .hpdcache_req_t(hpdcache_req_t),
-    .hpdcache_rsp_t(hpdcache_rsp_t)
-  ) read_wrapper_i (
-    .clk_i, .rst_ni,
-    .read_req_valid_i, .read_req_ready_o, .read_req_i,
-    .hpdcache_read_req_valid_o(cache_req_valid[0]),
-    .hpdcache_read_req_ready_i(cache_req_ready[0]),
-    .hpdcache_read_req_o(cache_req[0]),
-    .read_resp_valid_o, .read_resp_o,
-    .hpdcache_read_resp_valid_i(cache_rsp_valid[0]),
-    .hpdcache_read_resp_i(cache_rsp[0])
-  );
+  // read requestors
+  genvar readPortIdx;
+  generate
+    for (readPortIdx = 0; readPortIdx < nReadPorts; readPortIdx++) begin : gen_read_ports
+      hpdcache_read_req_rsp_wrapper #(
+        .HPDcacheCfg(HPDcacheCfg),
+        .tag_req_t(tag_req_t),
+        .tag_read_resp_t(tag_read_resp_t),
+        .hpdcache_req_t(hpdcache_req_t),
+        .hpdcache_rsp_t(hpdcache_rsp_t)
+      ) read_wrapper_i (
+        .clk_i, .rst_ni,
+        .sid_i(readPortIdx),
+        .read_req_valid_i(read_req_valid_i[readPortIdx]),
+        .read_req_ready_o(read_req_ready_o[readPortIdx]),
+        .read_req_i(read_req_i[readPortIdx]),
+        .hpdcache_read_req_valid_o(cache_req_valid[readPortIdx]),
+        .hpdcache_read_req_ready_i(cache_req_ready[readPortIdx]),
+        .hpdcache_read_req_o(cache_req[readPortIdx]),
+        .read_resp_valid_o(read_resp_valid_o[readPortIdx]),
+        .read_resp_o(read_resp_o[readPortIdx]),
+        .hpdcache_read_resp_valid_i(cache_rsp_valid[readPortIdx]),
+        .hpdcache_read_resp_i(cache_rsp[readPortIdx])
+      );
+    end
+  endgenerate
 
-  // requestor 1: writes
-  hpdcache_write_req_rsp_wrapper #(
-    .HPDcacheCfg(HPDcacheCfg),
-    .tag_req_t(tag_req_t),
-    .tag_data_req_t(tag_data_req_t),
-    .tag_write_resp_t(tag_write_resp_t),
-    .hpdcache_req_t(hpdcache_req_t),
-    .hpdcache_rsp_t(hpdcache_rsp_t)
-  ) write_wrapper_i (
-    .clk_i, .rst_ni,
-    .write_req_valid_i,
-    .write_req_ready_o,
-    .write_req_i,
-    .write_data_req_valid_i,
-    .write_data_req_ready_o,
-    .write_data_req_i,
-    .hpdcache_write_req_valid_o(cache_req_valid[1]),
-    .hpdcache_write_req_ready_i(cache_req_ready[1]),
-    .hpdcache_write_req_o(cache_req[1]),
-    .write_resp_valid_o, .write_resp_o,
-    .hpdcache_write_resp_valid_i(cache_rsp_valid[1]),
-    .hpdcache_write_resp_i(cache_rsp[1])
-  );
+  // write requestors
+  genvar writePortIdx;
+  generate
+    for (writePortIdx = 0; writePortIdx < nReadPorts; writePortIdx++) begin : gen_write_ports
+      hpdcache_write_req_rsp_wrapper #(
+        .HPDcacheCfg(HPDcacheCfg),
+        .tag_req_t(tag_req_t),
+        .tag_data_req_t(tag_data_req_t),
+        .tag_write_resp_t(tag_write_resp_t),
+        .hpdcache_req_t(hpdcache_req_t),
+        .hpdcache_rsp_t(hpdcache_rsp_t)
+      ) write_wrapper_i (
+        .clk_i, .rst_ni,
+        .sid_i(nReadPorts+writePortIdx),
+        .write_req_valid_i(write_req_valid_i[writePortIdx]),
+        .write_req_ready_o(write_req_ready_o[writePortIdx]),
+        .write_req_i(write_req_i[writePortIdx]),
+        .write_data_req_valid_i(write_data_req_valid_i[writePortIdx]),
+        .write_data_req_ready_o(write_data_req_ready_o[writePortIdx]),
+        .write_data_req_i(write_data_req_i[writePortIdx]),
+        .hpdcache_write_req_valid_o(cache_req_valid[nReadPorts+writePortIdx]),
+        .hpdcache_write_req_ready_i(cache_req_ready[nReadPorts+writePortIdx]),
+        .hpdcache_write_req_o(cache_req[nReadPorts+writePortIdx]),
+        .write_resp_valid_o(write_resp_valid_o[writePortIdx]),
+        .write_resp_o(write_resp_o[writePortIdx]),
+        .hpdcache_write_resp_valid_i(cache_rsp_valid[nReadPorts+writePortIdx]),
+        .hpdcache_write_resp_i(cache_rsp[nReadPorts+writePortIdx])
+      );
+    end
+  endgenerate
 
   // internal hpdcache instance
   //////////////////////////////////////////////////////////////////////////////
