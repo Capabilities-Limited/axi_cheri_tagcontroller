@@ -306,6 +306,8 @@ module hpdcache_wrapper #(
     userCfg.lowLatency = 1'b0;
     userCfg.userEn = 1'b0;
     userCfg.capAmoEn = 1'b0;
+    userCfg.eccEn = 1'b0;  /*FIXME add additional CVA6 parameter*/
+    userCfg.eccScrubberEn = 1'b0;  /*FIXME: add additional CVA6 parameter*/
     return userCfg;
   endfunction
 
