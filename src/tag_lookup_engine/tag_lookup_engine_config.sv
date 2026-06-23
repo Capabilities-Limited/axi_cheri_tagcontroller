@@ -13,7 +13,9 @@ module tag_lookup_engine_config #(
   input  addr_t tag_store_base_addr_i,
 
   output addr_t leaf_table_base_addr_o,
+  output addr_t leaf_table_top_addr_o,
   output addr_t root_table_base_addr_o,
+  output addr_t root_table_top_addr_o,
   output addr_t tag_store_top_addr_o,
   output logic [2:0] error_o
 );
@@ -31,13 +33,14 @@ module tag_lookup_engine_config #(
   addr_t leaf_table_bytes = ceil_div(leaf_table_bits, 8);
   addr_t root_table_bits = ceil_div(leaf_table_bits, GROUPING_FACTOR);
   addr_t root_table_bytes = ceil_div(root_table_bits, 8);
-  addr_t root_table_end_addr;
 
   assign leaf_table_base_addr_o = tag_store_base_addr_i;
-  assign root_table_base_addr_o =
-    align_up(leaf_table_base_addr_o + leaf_table_bytes, TAG_STORE_ALIGN);
-  assign root_table_end_addr = root_table_base_addr_o + root_table_bytes;
-  assign tag_store_top_addr_o = align_up(root_table_end_addr, TAG_STORE_ALIGN);
+  assign leaf_table_top_addr_o = leaf_table_base_addr_o + leaf_table_bytes;
+
+  assign root_table_base_addr_o = align_up(leaf_table_top_addr_o, TAG_STORE_ALIGN);
+  assign root_table_top_addr_o = root_table_base_addr_o + root_table_bytes;
+
+  assign tag_store_top_addr_o = align_up(root_table_top_addr_o, TAG_STORE_ALIGN);
 
   assign error_o =
     (covered_top_addr_i < covered_base_addr_i)         ? 3'd1 :
