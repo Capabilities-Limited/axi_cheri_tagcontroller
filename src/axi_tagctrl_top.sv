@@ -319,9 +319,9 @@ module axi_tagctrl_top #(
     .cached_start_addr_i,
     .cached_end_addr_i,
     // tag store configuration
-    .covered_base_addr_i(/*TODO*/),
-    .covered_top_addr_i(/*TODO*/),
-    .tag_store_base_addr_i(/*TODO*/),
+    .covered_base_addr_i(64'h8000_0000/*TODO*/),
+    .covered_top_addr_i(64'h8080_0000/*TODO*/),
+    .tag_store_base_addr_i(64'h9000_000/*TODO*/),
     // incoming read tag request descriptor
     .read_req_valid_i(ax_desc_valid[0]),
     .read_req_ready_o(ax_desc_ready[0]),
