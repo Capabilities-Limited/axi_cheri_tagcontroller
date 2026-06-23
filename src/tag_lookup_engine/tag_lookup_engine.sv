@@ -102,6 +102,7 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
 
   axi_addr_t root_table_base_addr, leaf_table_base_addr;
+  axi_addr_t root_table_top_addr, leaf_table_top_addr;
 
   tag_lookup_engine_config #(
     .addr_t(axi_addr_t),
@@ -114,7 +115,9 @@ module tag_lookup_engine #(
     .covered_top_addr_i,
     .tag_store_base_addr_i,
     .leaf_table_base_addr_o(leaf_table_base_addr),
+    .leaf_table_top_addr_o(leaf_table_top_addr),
     .root_table_base_addr_o(root_table_base_addr),
+    .root_table_top_addr_o(root_table_top_addr),
     .tag_store_top_addr_o(/* TODO */),
     .error_o(/* TODO */)
   );
@@ -156,6 +159,7 @@ module tag_lookup_engine #(
   ) i_tag_lookup_engine_table_lookups (
     .clk_i,
     .rst_ni,
+    .root_table_size_i(root_table_top_addr-root_table_base_addr),
     // incoming requests interface
     .read_req_valid_i,
     .read_req_ready_o,

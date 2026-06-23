@@ -20,6 +20,7 @@ module tag_lookup_engine_table_lookups #(
 ) (
   input logic clk_i,
   input logic rst_ni,
+  input axi_addr_t root_table_size_i,
   // incoming requests interface
   input  logic            read_req_valid_i,
   output logic            read_req_ready_o,
