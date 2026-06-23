@@ -259,8 +259,8 @@ module axi_tagctrl_top #(
   // W tag bits payload between the tag controller and tag cache
   tagc_oup_t tagc_w_oup;
   logic tagc_w_oup_valid, tagc_w_oup_ready;
-  slv_b_chan_t tagc_b_chan;
-  logic tagc_b_chan_valid, tagc_b_chan_ready;
+  slv_b_chan_t tagc_b_chan, tagc_b_chan_buff;
+  logic tagc_b_chan_valid, tagc_b_chan_ready, tagc_b_chan_buff_valid, tagc_b_chan_buff_ready;
 
   // tag controller and tag cache connection to the memory
   slv_req_t to_tagctrl_req, tagctrl_req, tagc_req;
@@ -447,7 +447,7 @@ module axi_tagctrl_top #(
   // FIFO between AW master and W master, there can be DEPTH inflight transactions
   stream_fifo #(
       .FALL_THROUGH(1'b1),
-      .DEPTH       (Cfg.TagAXFifoDepth),
+      .DEPTH       (Cfg.TagWFifoDepth),
       .T           (tagctrl_desc_t)
   ) i_stream_fifo_w (
       .clk_i,
@@ -461,6 +461,25 @@ module axi_tagctrl_top #(
       .data_o    (tagctrl_w_desc),
       .valid_o   (tagctrl_w_valid),
       .ready_i   (tagctrl_w_ready)
+  );
+
+  // FIFO between tag B slave and tagctrl B master
+  stream_fifo #(
+      .FALL_THROUGH(1'b1),
+      .DEPTH       (Cfg.TagWFifoDepth),
+      .T           (slv_b_chan_t)
+  ) i_stream_fifo_tagc_b (
+      .clk_i,
+      .rst_ni,
+      .flush_i   (1'b0),
+      .testmode_i(test_i),
+      .usage_o   (  /*not used*/),
+      .data_i    (tagc_b_chan),
+      .valid_i   (tagc_b_chan_valid),
+      .ready_o   (tagc_b_chan_ready), // This one is possibly ignored, which is why we have this buffer.
+      .data_o    (tagc_b_chan_buff),
+      .valid_o   (tagc_b_chan_buff_valid),
+      .ready_i   (tagc_b_chan_buff_ready)
   );
 
   axi_tagctrl_w #(
@@ -485,9 +504,9 @@ module axi_tagctrl_top #(
       .tagc_oup_o          (tagc_w_oup),
       .tagc_oup_valid_o    (tagc_w_oup_valid),
       .tagc_oup_ready_i    (tagc_w_oup_ready),
-      .tagc_resp_i         (tagc_b_chan),
-      .tagc_resp_valid_i   (tagc_b_chan_valid),
-      .tagc_resp_ready_o   (tagc_b_chan_ready),
+      .tagc_resp_i         (tagc_b_chan_buff),
+      .tagc_resp_valid_i   (tagc_b_chan_buff_valid),
+      .tagc_resp_ready_o   (tagc_b_chan_buff_ready),
       .w_chan_mst_o        (tagctrl_req.w),
       .w_chan_mst_valid_o  (tagctrl_req.w_valid),
       .w_chan_mst_ready_i  (tagctrl_resp.w_ready),
