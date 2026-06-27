@@ -467,11 +467,6 @@ module tag_lookup_engine_table_lookups #(
     return leaf_idx >> $clog2(GROUPING_FACTOR);
   endfunction
 
-  // TODO
-  assign root_read_req_valid_o[1] = 1'b0;
-  assign root_read_req_o[1] = '0;
-  assign root_read_resp_ready_o[1]  = 1'b0;
-
   // initialization fsm
   logic start_init;
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -554,6 +549,7 @@ module tag_lookup_engine_table_lookups #(
     .tag_req_t,
     .tag_data_req_t,
     .tag_write_resp_t,
+    .tag_read_resp_t,
     .axi_addr_t,
     .GROUPING_FACTOR,
     .TAGGED_CHUNK_SIZE
@@ -572,7 +568,14 @@ module tag_lookup_engine_table_lookups #(
     .resp_valid_o(write_resp_valid_o),
     .resp_ready_i(write_resp_ready_i),
     .resp_o(write_resp_o),
-    // outgoing root interface
+    // outgoing root read interface
+    .root_rd_req_valid_o(root_read_req_valid_o[1]),
+    .root_rd_req_ready_i(root_read_req_ready_i[1]),
+    .root_rd_req_o(root_read_req_o[1]),
+    .root_rd_resp_valid_i(root_read_resp_valid_i[1]),
+    .root_rd_resp_ready_o(root_read_resp_ready_o[1]),
+    .root_rd_resp_i(root_read_resp_i[1]),
+    // outgoing root write interface
     .root_req_valid_o(root_write_req_valid_o[0]),
     .root_req_ready_i(root_write_req_ready_i[0]),
     .root_req_o(root_write_req_o[0]),
@@ -582,7 +585,7 @@ module tag_lookup_engine_table_lookups #(
     .root_resp_valid_i(root_write_resp_valid_i[0]),
     .root_resp_ready_o(root_write_resp_ready_o[0]),
     .root_resp_i(root_write_resp_i[0]),
-    // outgoing leaf interface
+    // outgoing leaf write interface
     .leaf_req_valid_o(leaf_write_req_valid_o),
     .leaf_req_ready_i(leaf_write_req_ready_i),
     .leaf_req_o(leaf_write_req_o),
