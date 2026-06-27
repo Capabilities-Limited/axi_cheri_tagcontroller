@@ -155,7 +155,9 @@ module tag_lookup_engine #(
     .tag_read_resp_t,
     .axi_addr_t,
     .GROUPING_FACTOR,
-    .TAGGED_CHUNK_SIZE
+    .TAGGED_CHUNK_SIZE,
+    .BITS_PER_ROOT_FLIT(root_hpdcache_cfg.reqWords * root_hpdcache_cfg.wordWidth),
+    .BITS_PER_LEAF_FLIT(leaf_hpdcache_cfg.reqWords * leaf_hpdcache_cfg.wordWidth)
   ) i_tag_lookup_engine_table_lookups (
     .clk_i,
     .rst_ni,
@@ -218,6 +220,7 @@ module tag_lookup_engine #(
   // root accesses
   localparam int unsigned nRootReadPorts = 64'd2;
   localparam int unsigned nRootWritePorts = 64'd2;
+  localparam hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_cfg = root_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts);
   `ifndef PULP_LLC
   hpdcache_wrapper #(
   `else
@@ -239,7 +242,7 @@ module tag_lookup_engine #(
     `ifdef PULP_LLC
     , .tagc_desc_t
     `else
-    , .HPDcacheUserCfg(root_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts))
+    , .HPDcacheUserCfg(root_hpdcache_cfg)
     `endif
   ) i_root_tag_cache_wrapper (
     .clk_i,
@@ -280,6 +283,7 @@ module tag_lookup_engine #(
   // leaf accesses
   localparam int unsigned nLeafReadPorts = 64'd2;
   localparam int unsigned nLeafWritePorts = 64'd1;
+  localparam hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_cfg = leaf_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts);
   `ifndef PULP_LLC
   hpdcache_wrapper #(
   `else
@@ -301,7 +305,7 @@ module tag_lookup_engine #(
     `ifdef PULP_LLC
     , .tagc_desc_t
     `else
-    , .HPDcacheUserCfg(leaf_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts))
+    , .HPDcacheUserCfg(leaf_hpdcache_cfg)
     `endif
   ) i_leaf_tag_cache_wrapper (
     .clk_i,
@@ -402,7 +406,9 @@ module tag_lookup_engine_table_lookups #(
   parameter type tag_read_resp_t = logic,
   parameter type axi_addr_t = logic,
   parameter int unsigned GROUPING_FACTOR = 256,
-  parameter int unsigned TAGGED_CHUNK_SIZE = 16
+  parameter int unsigned TAGGED_CHUNK_SIZE = 16,
+  parameter int unsigned BITS_PER_ROOT_FLIT = 4,
+  parameter int unsigned BITS_PER_LEAF_FLIT = 4
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -552,7 +558,9 @@ module tag_lookup_engine_table_lookups #(
     .tag_read_resp_t,
     .axi_addr_t,
     .GROUPING_FACTOR,
-    .TAGGED_CHUNK_SIZE
+    .TAGGED_CHUNK_SIZE,
+    .BITS_PER_ROOT_FLIT,
+    .BITS_PER_LEAF_FLIT
   ) i_tag_lookup_engine_table_lookups_write (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
