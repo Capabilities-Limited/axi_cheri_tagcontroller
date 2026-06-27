@@ -41,6 +41,8 @@ module tag_lookup_engine_table_lookups_write #(
   parameter type axi_slv_id_t = logic,
   parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16,
+  parameter int unsigned BITS_PER_ROOT_FLIT = 4,
+  parameter int unsigned BITS_PER_LEAF_FLIT = 4,
   parameter int unsigned MAX_IN_FLIGHT = 4
 ) (
   input  logic            clk_i,
@@ -90,6 +92,8 @@ module tag_lookup_engine_table_lookups_write #(
   localparam int unsigned ROOT_STRB_W = $bits(data_i.strb);
   localparam int unsigned ROOT_DATA_W = $bits(data_i.data);
   localparam int unsigned ROOT_BIT_IDX_W = (ROOT_DATA_W > 1) ? $clog2(ROOT_DATA_W) : 1;
+  localparam int unsigned LEAF_FLITS = (GROUPING_FACTOR + BITS_PER_LEAF_FLIT - 1) / BITS_PER_LEAF_FLIT;
+  localparam int unsigned FLIT_CNT_W = (LEAF_FLITS > 1) ? $clog2(LEAF_FLITS) : 1;
 
   write_lookup_helpers #(.tag_req_t, .axi_addr_t, .axi_slv_id_t) h ();
 
@@ -105,6 +109,10 @@ module tag_lookup_engine_table_lookups_write #(
     logic root_wr_received;
     logic leaf_wr_sent;
     logic leaf_wr_data_sent;
+    logic leaf_wr_synth_zero_line;
+    logic [FLIT_CNT_W-1:0] leaf_wr_req_flit_cnt;
+    logic [FLIT_CNT_W-1:0] leaf_wr_data_flit_cnt;
+    logic [FLIT_CNT_W-1:0] leaf_wr_resp_cnt;
     logic leaf_wr_received;
     logic leaf_wr_resp;
     axi_addr_t root_idx;
@@ -139,6 +147,14 @@ module tag_lookup_engine_table_lookups_write #(
   logic [SB_IDX_W-1:0] leaf_wr_req_idx;
   logic [SB_IDX_W-1:0] leaf_wr_resp_idx;
   logic leaf_wr_rd_ready, leaf_wr_needed;
+  axi_addr_t leaf_wr_line_addr;
+  tag_req_t leaf_wr_temp_req;
+  logic [FLIT_CNT_W-1:0] leaf_wr_current_req_flit;
+  logic [FLIT_CNT_W-1:0] leaf_wr_current_data_flit;
+  logic [FLIT_CNT_W-1:0] leaf_wr_target_flit;
+  logic leaf_wr_req_cleared;
+  logic leaf_wr_data_cleared;
+  logic [FLIT_CNT_W-1:0] leaf_wr_curr_resp_flit;
   sb_entry_t curr_sb;
   logic root_rd_done;
   logic root_wr_done;
@@ -166,6 +182,10 @@ module tag_lookup_engine_table_lookups_write #(
       sb_d[alloc_ptr_q].root_wr_received = 1'b0;
       sb_d[alloc_ptr_q].leaf_wr_sent = 1'b0;
       sb_d[alloc_ptr_q].leaf_wr_data_sent = 1'b0;
+      sb_d[alloc_ptr_q].leaf_wr_synth_zero_line = 1'b0;
+      sb_d[alloc_ptr_q].leaf_wr_req_flit_cnt = '0;
+      sb_d[alloc_ptr_q].leaf_wr_data_flit_cnt = '0;
+      sb_d[alloc_ptr_q].leaf_wr_resp_cnt = '0;
       sb_d[alloc_ptr_q].leaf_wr_received = 1'b0;
       sb_d[alloc_ptr_q].root_idx = root_idx_i;
       sb_d[alloc_ptr_q].req = req_i;
@@ -179,11 +199,11 @@ module tag_lookup_engine_table_lookups_write #(
     root_rd_req_valid_o = 1'b0;
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       root_rd_req_idx = retire_ptr_q + i;
-      if ( sb_d[root_rd_req_idx].allocated &&
-           !sb_d[root_rd_req_idx].write_is_nonzero &&
+      if (sb_d[root_rd_req_idx].allocated &&
+           //!sb_d[root_rd_req_idx].write_is_nonzero &&
            !sb_d[root_rd_req_idx].root_rd_sent ) begin
         root_rd_req_valid_o = 1'b1;
-        root_rd_req_o = h.simple_read_desc(root_rd_req_idx[$bits(req_i.a_x_id)-1:0], sb_d[root_rd_req_idx].root_idx);
+        root_rd_req_o = h.simple_read_desc(root_rd_req_idx[SB_IDX_W-1:0], sb_d[root_rd_req_idx].root_idx);
         if (root_rd_req_ready_i) sb_d[root_rd_req_idx].root_rd_sent = 1'b1;
         break;
       end
@@ -194,7 +214,18 @@ module tag_lookup_engine_table_lookups_write #(
       root_rd_resp_idx = root_rd_resp_i.id[SB_IDX_W-1:0];
       root_rd_bit_idx = sb_d[root_rd_resp_idx].root_idx[ROOT_BIT_IDX_W-1:0];
       sb_d[root_rd_resp_idx].root_rd_received = 1'b1;
+
       sb_d[root_rd_resp_idx].root_is_one = root_rd_resp_i.data[root_rd_bit_idx];
+      // set the flit count for leaf writes
+      // detect if synthesizing a line of zeroes is necessary
+      sb_d[root_rd_resp_idx].leaf_wr_req_flit_cnt = '0;
+      sb_d[root_rd_resp_idx].leaf_wr_data_flit_cnt = '0;
+      sb_d[root_rd_resp_idx].leaf_wr_resp_cnt = '0;
+      if (!sb_d[root_rd_resp_idx].root_is_one && sb_d[root_rd_resp_idx].write_is_nonzero) begin
+        sb_d[root_rd_resp_idx].leaf_wr_synth_zero_line = 1'b1;
+      end else begin // otherwise a single flit is needed
+        sb_d[root_rd_resp_idx].leaf_wr_synth_zero_line = 1'b0;
+      end
     end
 
     // root writes //
@@ -234,35 +265,74 @@ module tag_lookup_engine_table_lookups_write #(
 
     // leaf writes //
     /////////////////
-    // send needed leaf write requests
-    leaf_req_valid_o = 1'b0;
+    leaf_req_valid_o  = 1'b0;
     leaf_data_valid_o = 1'b0;
+
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       leaf_wr_req_idx = retire_ptr_q + i;
       leaf_wr_rd_ready = sb_d[leaf_wr_req_idx].write_is_nonzero || sb_d[leaf_wr_req_idx].root_rd_received;
       leaf_wr_needed = sb_d[leaf_wr_req_idx].write_is_nonzero || sb_d[leaf_wr_req_idx].root_is_one;
 
-      if (sb_d[leaf_wr_req_idx].allocated && leaf_wr_rd_ready && leaf_wr_needed) begin
-        if (!sb_d[leaf_wr_req_idx].leaf_wr_sent) begin
-          leaf_req_valid_o = 1'b1;
-          leaf_req_o = sb_d[leaf_wr_req_idx].req;
-          leaf_req_o.a_x_id = leaf_wr_req_idx[$bits(req_i.a_x_id)-1:0];
-          if (leaf_req_ready_i) sb_d[leaf_wr_req_idx].leaf_wr_sent = 1'b1;
+      // is the current entry qualifying as needing leaf writes
+      if (sb_d[leaf_wr_req_idx].allocated && leaf_wr_rd_ready && leaf_wr_needed && sb_d[leaf_wr_req_idx].root_rd_received) begin
+        // More flits to go? otherwise, continue to next entry
+        leaf_wr_line_addr = sb_d[leaf_wr_req_idx].req.a_x_addr & ~((axi_addr_t'(1) << $clog2(GROUPING_FACTOR)) - 1);
+        if (!sb_d[leaf_wr_req_idx].leaf_wr_sent || !sb_d[leaf_wr_req_idx].leaf_wr_data_sent) begin
+          // request
+          leaf_wr_current_req_flit = sb_d[leaf_wr_req_idx].leaf_wr_req_flit_cnt;
+          if (!sb_d[leaf_wr_req_idx].leaf_wr_sent) begin
+            if (sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line) begin
+              leaf_wr_temp_req = h.desc_with_addr(sb_d[leaf_wr_req_idx].req, leaf_wr_line_addr + (axi_addr_t'(leaf_wr_current_req_flit) << $clog2(BITS_PER_LEAF_FLIT)));
+            end else begin
+              leaf_wr_temp_req = h.desc_with_addr(sb_d[leaf_wr_req_idx].req, sb_d[leaf_wr_req_idx].req.a_x_addr);
+            end
+            leaf_wr_temp_req.a_x_id = leaf_wr_req_idx[$bits(req_i.a_x_id)-1:0];
+            leaf_req_o = leaf_wr_temp_req;
+            leaf_req_valid_o = 1'b1;
+            // send the req
+            if (leaf_req_ready_i) begin
+              sb_d[leaf_wr_req_idx].leaf_wr_req_flit_cnt = sb_d[leaf_wr_req_idx].leaf_wr_req_flit_cnt + 1;
+              // was it the last flit?
+              if (!sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line ||
+                  (sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line && sb_q[leaf_wr_req_idx].leaf_wr_req_flit_cnt == LEAF_FLITS - 1)) begin
+                sb_d[leaf_wr_req_idx].leaf_wr_sent = 1'b1;
+              end
+            end
+          end
+          // data
+          leaf_wr_current_data_flit = sb_d[leaf_wr_req_idx].leaf_wr_data_flit_cnt;
+          if (!sb_d[leaf_wr_req_idx].leaf_wr_data_sent) begin
+            leaf_wr_target_flit = sb_d[leaf_wr_req_idx].req.a_x_addr & ((1 << $clog2(LEAF_FLITS)) - 1);
+            leaf_data_o.data = sb_d[leaf_wr_req_idx].data.data & sb_d[leaf_wr_req_idx].data.bit_en;
+            // if root was 0, need 0 leaf line synthesis, so 0 flits for the flits that aren't the
+            // one pointed at
+            if (sb_d[leaf_wr_req_idx].write_is_nonzero && !sb_d[leaf_wr_req_idx].root_is_one && leaf_wr_current_data_flit != leaf_wr_target_flit) begin
+              leaf_data_o = tag_data_req_t'('0);
+            end
+            leaf_data_valid_o = 1'b1;
+            // send the data
+            if (leaf_data_ready_i) begin
+              sb_d[leaf_wr_req_idx].leaf_wr_data_flit_cnt = sb_d[leaf_wr_req_idx].leaf_wr_data_flit_cnt + 1;
+              // was it the last flit?
+              if (!sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line ||
+                  (sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line && sb_q[leaf_wr_req_idx].leaf_wr_data_flit_cnt == LEAF_FLITS - 1)) begin
+                sb_d[leaf_wr_req_idx].leaf_wr_data_sent = 1'b1;
+              end
+            end
+          end
         end
-        if (!sb_d[leaf_wr_req_idx].leaf_wr_data_sent) begin
-          leaf_data_valid_o = 1'b1;
-          leaf_data_o = sb_d[leaf_wr_req_idx].data;
-          if (leaf_data_ready_i) sb_d[leaf_wr_req_idx].leaf_wr_data_sent = 1'b1;
-        end
-        if (!sb_d[leaf_wr_req_idx].leaf_wr_sent || !sb_d[leaf_wr_req_idx].leaf_wr_data_sent) break;
+        break; // Stop loop evaluating newer entries to preserve in-order streaming
       end
     end
     // collect leaf write responses
     leaf_resp_ready_o = 1'b1;
     if (leaf_resp_valid_i) begin
       leaf_wr_resp_idx = leaf_resp_i.id[SB_IDX_W-1:0];
-      sb_d[leaf_wr_resp_idx].leaf_wr_received = 1'b1;
       sb_d[leaf_wr_resp_idx].leaf_wr_resp = leaf_resp_i;
+      sb_d[leaf_wr_resp_idx].leaf_wr_resp_cnt = sb_d[leaf_wr_resp_idx].leaf_wr_resp_cnt + 1;
+      if (sb_q[leaf_wr_resp_idx].leaf_wr_resp_cnt == (sb_d[leaf_wr_resp_idx].leaf_wr_synth_zero_line ? LEAF_FLITS - 1 : 0)) begin
+        sb_d[leaf_wr_resp_idx].leaf_wr_received = 1'b1;
+      end
     end
 
     // retire //
