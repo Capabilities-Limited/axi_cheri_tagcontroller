@@ -303,11 +303,17 @@ module tag_lookup_engine_table_lookups_write #(
           leaf_wr_current_data_flit = sb_d[leaf_wr_req_idx].leaf_wr_data_flit_cnt;
           if (!sb_d[leaf_wr_req_idx].leaf_wr_data_sent) begin
             leaf_wr_target_flit = sb_d[leaf_wr_req_idx].req.a_x_addr & ((1 << $clog2(LEAF_FLITS)) - 1);
-            leaf_data_o.data = sb_d[leaf_wr_req_idx].data.data & sb_d[leaf_wr_req_idx].data.bit_en;
+
+            leaf_data_o.data = sb_d[leaf_wr_req_idx].data.data;
+            leaf_data_o.bit_en = sb_d[leaf_wr_req_idx].data.bit_en;
+            leaf_data_o.strb = sb_d[leaf_wr_req_idx].data.strb;
             // if root was 0, need 0 leaf line synthesis, so 0 flits for the flits that aren't the
             // one pointed at
             if (sb_d[leaf_wr_req_idx].write_is_nonzero && !sb_d[leaf_wr_req_idx].root_is_one && leaf_wr_current_data_flit != leaf_wr_target_flit) begin
               leaf_data_o = tag_data_req_t'('0);
+              leaf_data_o.data = '0;
+              leaf_data_o.bit_en = '1;
+              leaf_data_o.strb = '1;
             end
             leaf_data_valid_o = 1'b1;
             // send the data
