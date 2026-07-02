@@ -152,9 +152,6 @@ module tag_lookup_engine_table_lookups_write #(
   logic [FLIT_CNT_W-1:0] leaf_wr_current_req_flit;
   logic [FLIT_CNT_W-1:0] leaf_wr_current_data_flit;
   logic [FLIT_CNT_W-1:0] leaf_wr_target_flit;
-  logic leaf_wr_req_cleared;
-  logic leaf_wr_data_cleared;
-  logic [FLIT_CNT_W-1:0] leaf_wr_curr_resp_flit;
   sb_entry_t curr_sb;
   logic root_rd_done;
   logic root_wr_done;
