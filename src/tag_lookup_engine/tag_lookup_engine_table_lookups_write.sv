@@ -196,9 +196,7 @@ module tag_lookup_engine_table_lookups_write #(
     root_rd_req_valid_o = 1'b0;
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       root_rd_req_idx = retire_ptr_q + i;
-      if (sb_d[root_rd_req_idx].allocated &&
-           //!sb_d[root_rd_req_idx].write_is_nonzero &&
-           !sb_d[root_rd_req_idx].root_rd_sent ) begin
+      if (sb_d[root_rd_req_idx].allocated && !sb_d[root_rd_req_idx].root_rd_sent ) begin
         root_rd_req_valid_o = 1'b1;
         root_rd_req_o = h.simple_read_desc(root_rd_req_idx[SB_IDX_W-1:0], sb_d[root_rd_req_idx].root_idx);
         if (root_rd_req_ready_i) sb_d[root_rd_req_idx].root_rd_sent = 1'b1;
@@ -290,8 +288,7 @@ module tag_lookup_engine_table_lookups_write #(
             if (leaf_req_ready_i) begin
               sb_d[leaf_wr_req_idx].leaf_wr_req_flit_cnt = sb_d[leaf_wr_req_idx].leaf_wr_req_flit_cnt + 1;
               // was it the last flit?
-              if (!sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line ||
-                  (sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line && sb_q[leaf_wr_req_idx].leaf_wr_req_flit_cnt == LEAF_FLITS - 1)) begin
+              if (!sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line || sb_q[leaf_wr_req_idx].leaf_wr_req_flit_cnt == LEAF_FLITS - 1) begin
                 sb_d[leaf_wr_req_idx].leaf_wr_sent = 1'b1;
               end
             end
@@ -317,8 +314,7 @@ module tag_lookup_engine_table_lookups_write #(
             if (leaf_data_ready_i) begin
               sb_d[leaf_wr_req_idx].leaf_wr_data_flit_cnt = sb_d[leaf_wr_req_idx].leaf_wr_data_flit_cnt + 1;
               // was it the last flit?
-              if (!sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line ||
-                  (sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line && sb_q[leaf_wr_req_idx].leaf_wr_data_flit_cnt == LEAF_FLITS - 1)) begin
+              if (!sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line || sb_q[leaf_wr_req_idx].leaf_wr_data_flit_cnt == LEAF_FLITS - 1) begin
                 sb_d[leaf_wr_req_idx].leaf_wr_data_sent = 1'b1;
               end
             end
