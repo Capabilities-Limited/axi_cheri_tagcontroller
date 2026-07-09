@@ -9,7 +9,7 @@ module tag_lookup_engine #(
   parameter type tag_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
   parameter type tag_read_resp_t = logic,
-  parameter int unsigned AxiIdWidth = 64'd5,
+  parameter int unsigned AxiMstIdWidth = 64'd6,
   parameter int unsigned AxiAddrWidth = 64'd64,
   parameter int unsigned AxiDataWidth = 64'd64,
   parameter int unsigned AxiUserWidth = 64'd0,
@@ -78,8 +78,8 @@ module tag_lookup_engine #(
   //assert (AxiAddrWidth < 2) $error("tag_lookup_engine: the AXI ID width configuration is not supported");
 
   // derive AXI types for inner (axi_mux slave) and outer (axi_mux master) traffic
-  typedef logic [AxiIdWidth:0] axi_slv_id_t;
-  typedef logic [AxiIdWidth-1:0] axi_mst_id_t;
+  typedef logic [AxiMstIdWidth-2:0] axi_slv_id_t;
+  typedef logic [AxiMstIdWidth-1:0] axi_mst_id_t;
   typedef logic [AxiDataWidth-1:0] axi_data_t;
   typedef logic [(AxiDataWidth/8)-1:0] axi_strb_t;
   typedef logic [0:0] axi_user_t;
@@ -142,8 +142,8 @@ module tag_lookup_engine #(
   logic root_read_resp_ready[2], leaf_read_resp_ready[2];
   tag_read_resp_t root_read_resp[2], leaf_read_resp[2];
 
-  mem_req_t root_mem_req, leaf_mem_req;
-  mem_resp_t root_mem_resp, leaf_mem_resp;
+  slv_req_t root_mem_req, leaf_mem_req;
+  slv_resp_t root_mem_resp, leaf_mem_resp;
 
   //////////////////////////////////////////////////////////////////////////////
   // generate per table-level accesses
@@ -233,12 +233,12 @@ module tag_lookup_engine #(
     .tag_read_resp_t,
     .nReadPorts(nRootReadPorts),
     .nWritePorts(nRootWritePorts),
-    .AxiIdWidth(AxiIdWidth-1),
+    .AxiIdWidth(AxiMstIdWidth-1),
     .AxiAddrWidth,
     .AxiDataWidth,
     .AxiUserWidth,
-    .mem_req_t,
-    .mem_resp_t,
+    .mem_req_t(slv_req_t),
+    .mem_resp_t(slv_resp_t),
     .axi_addr_t
     `ifdef PULP_LLC
     , .tagc_desc_t
@@ -296,12 +296,12 @@ module tag_lookup_engine #(
     .tag_read_resp_t,
     .nReadPorts(nLeafReadPorts),
     .nWritePorts(nLeafWritePorts),
-    .AxiIdWidth(AxiIdWidth-1),
+    .AxiIdWidth(AxiMstIdWidth-1),
     .AxiAddrWidth,
     .AxiDataWidth,
     .AxiUserWidth,
-    .mem_req_t,
-    .mem_resp_t,
+    .mem_req_t(slv_req_t),
+    .mem_resp_t(slv_resp_t),
     .axi_addr_t
     `ifdef PULP_LLC
     , .tagc_desc_t
@@ -361,7 +361,7 @@ module tag_lookup_engine #(
   endfunction
 
   axi_mux #(
-    .SlvAxiIDWidth(AxiIdWidth-1),
+    .SlvAxiIDWidth(AxiMstIdWidth-1),
     .slv_aw_chan_t(slv_aw_chan_t),
     .mst_aw_chan_t(mst_aw_chan_t),
     .w_chan_t     (w_chan_t),
