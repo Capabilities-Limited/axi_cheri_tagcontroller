@@ -297,7 +297,7 @@ module axi_tagctrl_top #(
     .tag_data_req_t(tagc_oup_t),
     .tag_write_resp_t(slv_b_chan_t),
     .tag_read_resp_t(tagc_inp_t),
-    .AxiIdWidth(AxiCfg.SlvPortIdWidth-1),
+    .AxiMstIdWidth(AxiIdWidth),
     .AxiAddrWidth(AxiAddrWidth),
     .AxiDataWidth(AxiDataWidth),
     .AxiUserWidth(AxiUserWidth),
@@ -517,7 +517,7 @@ module axi_tagctrl_top #(
   // and from the tracker to read/write to memory
   // Attention: This unit widens the AXI ID by one!
   axi_mux #(
-      .SlvAxiIDWidth(AxiCfg.SlvPortIdWidth),
+      .SlvAxiIDWidth(AxiIdWidth),
       .slv_aw_chan_t(slv_aw_chan_t),
       .mst_aw_chan_t(mst_aw_chan_t),
       .w_chan_t     (w_chan_t),
