@@ -523,6 +523,8 @@ module axi_tagctrl_top #(
 `else
     ret.aw.addr = (req.aw.addr>>3) + TagCacheMemBase;
     ret.ar.addr = (req.ar.addr>>3) + TagCacheMemBase;
+    ret.aw.size = req.aw.size - 3;
+    ret.ar.size = req.ar.size - 3;
 `endif
     return ret;
   endfunction
