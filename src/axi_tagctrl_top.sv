@@ -285,9 +285,6 @@ module axi_tagctrl_top #(
   tagc_desc_t tagctrl_w_desc;
   logic tagctrl_w_valid, tagctrl_w_ready;
 
-  // global flush signals
-  logic tagctrl_isolate, tagctrl_isolated;
-
   // backing tag memory accesses
   tag_lookup_engine #(
   `ifndef PULP_LLC
@@ -314,8 +311,6 @@ module axi_tagctrl_top #(
   ) i_tag_lookup_engine (
     .clk_i,
     .rst_ni,
-    .isolate_o(tagctrl_isolate),
-    .isolated_i(tagctrl_isolated),
     .cached_start_addr_i,
     .cached_end_addr_i,
     // tag store configuration
@@ -548,6 +543,7 @@ module axi_tagctrl_top #(
       .mst_req_o  (mst_req_o),
       .mst_resp_i (mst_resp_i)
   );
+  /*
   slv_req_t  slv_req_cut;
   slv_resp_t slv_resp_cut;
   // Isolation module before demux to easy flushing,
@@ -566,6 +562,7 @@ module axi_tagctrl_top #(
       .isolate_i  ( tagctrl_isolate   ),
       .isolated_o ( tagctrl_isolated  )
   );
+  */
 
   axi_cut #(
       // AXI channel structs
@@ -581,8 +578,10 @@ module axi_tagctrl_top #(
       .rst_ni,
       .slv_req_i (slv_req_i),
       .slv_resp_o(slv_resp_o),
-      .mst_req_o (slv_req_cut),
-      .mst_resp_i(slv_resp_cut)
+      //.mst_req_o (slv_req_cut),
+      //.mst_resp_i(slv_resp_cut)
+      .mst_req_o (to_tagctrl_req),
+      .mst_resp_i(from_tagctrl_resp)
   );
 
   // pragma translate_off
