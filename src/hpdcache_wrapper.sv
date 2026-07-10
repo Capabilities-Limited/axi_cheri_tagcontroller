@@ -269,17 +269,21 @@ module hpdcache_wrapper #(
     userCfg.paWidth = 49;
     userCfg.wordWidth = 1;
     userCfg.wordUserWidth = 1;
+    `ifdef VERILATOR
     userCfg.sets = 2;
-    userCfg.ways = 2;
+    `else
+    userCfg.sets = 256; // 256x4x16=16KB
+    `endif
+    userCfg.ways = 4;
     userCfg.clWords = 256;
     userCfg.reqWords = cache_req_words;
     userCfg.reqTransIdWidth = 6;
     userCfg.reqSrcIdWidth = 2;  // Up to 4 requesters
     userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_PLRU;
-    userCfg.dataWaysPerRamWord = userCfg.ways;
+    userCfg.dataWaysPerRamWord = 1;
     userCfg.dataSetsPerRam = userCfg.sets;
     userCfg.dataRamByteEnable = 1'b1; // XXX TODO check the 1'b0 option
-    userCfg.accessWords = 32;
+    userCfg.accessWords = 4;
     userCfg.mshrSets = 1;
     userCfg.mshrWays = 4;
     userCfg.mshrWaysPerRamWord = 2;
