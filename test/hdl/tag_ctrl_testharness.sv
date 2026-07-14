@@ -62,8 +62,8 @@ module tag_ctrl_testharness #(
   localparam int unsigned CapSize = 128;
   localparam int unsigned NUM_WORDS = 2 ** 25;  // memory size
   localparam int unsigned DRAMMemBase = {64'h80000000};
-  localparam int unsigned DRAMMemLength = {64'h40000000};
-  localparam int unsigned TagCacheMemBase = {64'hA0000000};
+  localparam int unsigned DRAMMemLength = {64'h00800000};
+  localparam int unsigned TagCacheMemBase = {64'h90000000};
   localparam int unsigned TagCacheMemLength = {64'h00010000};
   localparam int unsigned AxiIdWidth = 64'd6;
   localparam int unsigned AxiAddrWidth = 64'd64;
@@ -202,6 +202,7 @@ module tag_ctrl_testharness #(
   ////////////////////////////
   axi_tagctrl_reg_wrap #(
       .DRAMMemBase     (DRAMMemBase),
+      .DRAMMemLength   (DRAMMemLength),
       .CapSize         (CapSize),
       .TagCacheMemBase (TagCacheMemBase),
       .SetAssociativity(SetAssociativity),
