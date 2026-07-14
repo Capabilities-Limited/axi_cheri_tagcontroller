@@ -11,7 +11,7 @@ function automatic hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_user_cfg(int 
   userCfg.reqTransIdWidth = 6;
   userCfg.reqSrcIdWidth = 2;  // Up to 4 requesters
   userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_PLRU;
-  userCfg.dataWaysPerRamWord = 4;
+  userCfg.dataWaysPerRamWord = 1;
   userCfg.dataSetsPerRam = 256;
   userCfg.dataRamByteEnable = 1'b1; // XXX TODO check the 1'b0 option
   userCfg.accessWords = 32;
@@ -57,7 +57,7 @@ function automatic hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_user_cfg(int 
   userCfg.reqTransIdWidth = 6;
   userCfg.reqSrcIdWidth = 2;  // Up to 4 requesters
   userCfg.victimSel = hpdcache_pkg::HPDCACHE_VICTIM_PLRU;
-  userCfg.dataWaysPerRamWord = 4;
+  userCfg.dataWaysPerRamWord = 1;
   userCfg.dataSetsPerRam = 128;
   userCfg.dataRamByteEnable = 1'b1; // XXX TODO check the 1'b0 option
   userCfg.accessWords = 32;
