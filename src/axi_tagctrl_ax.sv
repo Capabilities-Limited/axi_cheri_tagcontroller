@@ -92,11 +92,7 @@ module axi_tagctrl_ax #(
   );
   assign tag_addr = (tag_off << $clog2(Cfg.tagc_cfg.BlockSize / 8));
 `else
-  assign tag_off = $unsigned(
-      ax_chan_slv_i.addr - Cfg.DRAMMemBase
-  ) >> $clog2((Cfg.CapSize / 8)
-  );
-  assign tag_addr = tag_off;
+  assign tag_addr = $unsigned(ax_chan_slv_i.addr - Cfg.DRAMMemBase) >> $clog2(Cfg.CapSize / 8);
 `endif
 
   always_comb begin : ax_mem_chan_ctrl
