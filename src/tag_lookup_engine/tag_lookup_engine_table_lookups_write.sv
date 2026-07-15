@@ -95,7 +95,9 @@ module tag_lookup_engine_table_lookups_write #(
   localparam int unsigned LEAF_FLITS = (GROUPING_FACTOR + BITS_PER_LEAF_FLIT - 1) / BITS_PER_LEAF_FLIT;
   localparam int unsigned FLIT_CNT_W = (LEAF_FLITS > 1) ? $clog2(LEAF_FLITS) : 1;
 
-  write_lookup_helpers #(.tag_req_t, .axi_addr_t, .axi_slv_id_t) h ();
+  write_lookup_helpers #(.tag_req_t(tag_req_t),
+                         .axi_addr_t(axi_addr_t),
+                         .axi_slv_id_t(axi_slv_id_t)) h ();
 
   // Scoreboard tracking structure
   typedef struct packed {
