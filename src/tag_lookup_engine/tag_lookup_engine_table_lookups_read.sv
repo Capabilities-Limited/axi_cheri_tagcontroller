@@ -44,7 +44,7 @@ module tag_lookup_engine_table_lookups_read #(
   input  tag_read_resp_t leaf_resp_i
 );
 
-  helpers#(.tag_req_t, .axi_addr_t) h ();
+  helpers#(.tag_req_t(tag_req_t), .axi_addr_t(axi_addr_t)) h ();
 
   // Scoreboard for tag read requests
   localparam int unsigned SB_IDX_W = $clog2(MAX_IN_FLIGHT);

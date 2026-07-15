@@ -106,10 +106,10 @@ module tag_lookup_engine #(
 
   tag_lookup_engine_config #(
     .addr_t(axi_addr_t),
-    .GROUPING_FACTOR,
-    .TAGGED_CHUNK_SIZE,
-    .COVERED_ALIGN,
-    .TAG_STORE_ALIGN
+    .GROUPING_FACTOR(GROUPING_FACTOR),
+    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE),
+    .COVERED_ALIGN(COVERED_ALIGN),
+    .TAG_STORE_ALIGN(TAG_STORE_ALIGN)
   ) i_tag_lookup_engine_config (
     .covered_base_addr_i,
     .covered_top_addr_i,
@@ -149,14 +149,14 @@ module tag_lookup_engine #(
   // generate per table-level accesses
   //////////////////////////////////////////////////////////////////////////////
   tag_lookup_engine_table_lookups #(
-    .tag_req_t,
-    .tag_data_req_t,
-    .tag_write_resp_t,
-    .tag_read_resp_t,
-    .axi_addr_t,
-    .axi_slv_id_t,
-    .GROUPING_FACTOR,
-    .TAGGED_CHUNK_SIZE,
+    .tag_req_t(tag_req_t),
+    .tag_data_req_t(tag_data_req_t),
+    .tag_write_resp_t(tag_write_resp_t),
+    .tag_read_resp_t(tag_read_resp_t),
+    .axi_addr_t(axi_addr_t),
+    .axi_slv_id_t(axi_slv_id_t),
+    .GROUPING_FACTOR(GROUPING_FACTOR),
+    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE),
     .BITS_PER_ROOT_FLIT(root_hpdcache_cfg.reqWords * root_hpdcache_cfg.wordWidth),
     .BITS_PER_LEAF_FLIT(leaf_hpdcache_cfg.reqWords * leaf_hpdcache_cfg.wordWidth)
   ) i_tag_lookup_engine_table_lookups (
@@ -227,21 +227,21 @@ module tag_lookup_engine #(
   `else
   llc_cache_wrapper #(
   `endif
-    .tag_req_t,
-    .tag_data_req_t,
-    .tag_write_resp_t,
-    .tag_read_resp_t,
+    .tag_req_t(tag_req_t),
+    .tag_data_req_t(tag_data_req_t),
+    .tag_write_resp_t(tag_write_resp_t),
+    .tag_read_resp_t(tag_read_resp_t),
     .nReadPorts(nRootReadPorts),
     .nWritePorts(nRootWritePorts),
     .AxiIdWidth(AxiMstIdWidth-1),
-    .AxiAddrWidth,
-    .AxiDataWidth,
-    .AxiUserWidth,
+    .AxiAddrWidth(AxiAddrWidth),
+    .AxiDataWidth(AxiDataWidth),
+    .AxiUserWidth(AxiUserWidth),
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
-    .axi_addr_t
+    .axi_addr_t(axi_addr_t)
     `ifdef PULP_LLC
-    , .tagc_desc_t
+    , .tagc_desc_t(tagc_desc_t)
     `else
     , .HPDcacheUserCfg(root_hpdcache_cfg)
     `endif
@@ -290,21 +290,21 @@ module tag_lookup_engine #(
   `else
   llc_cache_wrapper #(
   `endif
-    .tag_req_t,
-    .tag_data_req_t,
-    .tag_write_resp_t,
-    .tag_read_resp_t,
+    .tag_req_t(tag_req_t),
+    .tag_data_req_t(tag_data_req_t),
+    .tag_write_resp_t(tag_write_resp_t),
+    .tag_read_resp_t(tag_read_resp_t),
     .nReadPorts(nLeafReadPorts),
     .nWritePorts(nLeafWritePorts),
     .AxiIdWidth(AxiMstIdWidth-1),
-    .AxiAddrWidth,
-    .AxiDataWidth,
-    .AxiUserWidth,
+    .AxiAddrWidth(AxiAddrWidth),
+    .AxiDataWidth(AxiDataWidth),
+    .AxiUserWidth(AxiUserWidth),
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
-    .axi_addr_t
+    .axi_addr_t(axi_addr_t)
     `ifdef PULP_LLC
-    , .tagc_desc_t
+    , .tagc_desc_t(tagc_desc_t)
     `else
     , .HPDcacheUserCfg(leaf_hpdcache_cfg)
     `endif
@@ -522,11 +522,11 @@ module tag_lookup_engine_table_lookups #(
 
   // tag reads //
   tag_lookup_engine_table_lookups_read #(
-    .tag_req_t,
-    .tag_read_resp_t,
-    .axi_addr_t,
-    .GROUPING_FACTOR,
-    .TAGGED_CHUNK_SIZE
+    .tag_req_t(tag_req_t),
+    .tag_read_resp_t(tag_read_resp_t),
+    .axi_addr_t(axi_addr_t),
+    .GROUPING_FACTOR(GROUPING_FACTOR),
+    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE)
   ) i_tag_lookup_engine_table_lookups_read (
     .clk_i,
     .rst_ni,
@@ -556,16 +556,16 @@ module tag_lookup_engine_table_lookups #(
   );
   // tag writes //
   tag_lookup_engine_table_lookups_write #(
-    .tag_req_t,
-    .tag_data_req_t,
-    .tag_write_resp_t,
-    .tag_read_resp_t,
-    .axi_addr_t,
-    .axi_slv_id_t,
-    .GROUPING_FACTOR,
-    .TAGGED_CHUNK_SIZE,
-    .BITS_PER_ROOT_FLIT,
-    .BITS_PER_LEAF_FLIT
+    .tag_req_t(tag_req_t),
+    .tag_data_req_t(tag_data_req_t),
+    .tag_write_resp_t(tag_write_resp_t),
+    .tag_read_resp_t(tag_read_resp_t),
+    .axi_addr_t(axi_addr_t),
+    .axi_slv_id_t(axi_slv_id_t),
+    .GROUPING_FACTOR(GROUPING_FACTOR),
+    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE),
+    .BITS_PER_ROOT_FLIT(BITS_PER_ROOT_FLIT),
+    .BITS_PER_LEAF_FLIT(BITS_PER_LEAF_FLIT)
   ) i_tag_lookup_engine_table_lookups_write (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
