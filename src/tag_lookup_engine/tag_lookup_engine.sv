@@ -4,6 +4,9 @@
 // * tag_lookup_engine_table_lookups module
 // * per lookup stream caches
 // * an axi_mux to produce a single stream of tag requests
+
+import lookup_engine_hpdcache_cfg_pkg::*;
+
 module tag_lookup_engine #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
