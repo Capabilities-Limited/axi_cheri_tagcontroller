@@ -103,7 +103,9 @@ module tag_lookup_engine_table_lookups_read #(
       if (sb_d[idx].allocated && !sb_d[idx].root_sent) begin
         root_req_valid_o = 1'b1;
         root_req_o = desc_with_addr(sb_d[idx].req_payload, sb_d[idx].root_idx);
-        root_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0]; // use scoreboard idx as id
+        //root_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0]; // use scoreboard idx as id
+        root_req_o.a_x_id = '0;
+        root_req_o.a_x_id[SB_IDX_W-1:0] = idx; // use scoreboard idx as id
         if (root_req_ready_i) sb_d[idx].root_sent = 1'b1;
         break; // maximum 1 request per cycle
       end
@@ -116,7 +118,9 @@ module tag_lookup_engine_table_lookups_read #(
       if (sb_d[idx].allocated && !sb_d[idx].leaf_sent) begin
         leaf_req_valid_o = 1'b1;
         leaf_req_o = sb_d[idx].req_payload;
-        leaf_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0];
+        //leaf_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0];
+        leaf_req_o.a_x_id = '0;
+        leaf_req_o.a_x_id[SB_IDX_W-1:0] = idx;
         if (leaf_req_ready_i) sb_d[idx].leaf_sent = 1'b1;
         break;
       end

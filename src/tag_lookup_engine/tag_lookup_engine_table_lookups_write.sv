@@ -231,7 +231,9 @@ module tag_lookup_engine_table_lookups_write #(
         if (!sb_d[root_wr_req_idx].root_wr_sent) begin
           root_req_valid_o = 1'b1;
           root_req_o = desc_with_addr(sb_d[root_wr_req_idx].req, sb_d[root_wr_req_idx].root_idx);
-          root_req_o.a_x_id = root_wr_req_idx[$bits(req_i.a_x_id)-1:0];
+          //root_req_o.a_x_id = root_wr_req_idx[$bits(req_i.a_x_id)-1:0];
+          root_req_o.a_x_id = '0;
+          root_req_o.a_x_id[SB_IDX_W-1:0] = root_wr_req_idx;
           if (root_req_ready_i) sb_d[root_wr_req_idx].root_wr_sent = 1'b1;
         end
         if (!sb_d[root_wr_req_idx].root_wr_data_sent) begin
@@ -274,7 +276,9 @@ module tag_lookup_engine_table_lookups_write #(
             end else begin
               leaf_wr_temp_req = desc_with_addr(sb_d[leaf_wr_req_idx].req, sb_d[leaf_wr_req_idx].req.a_x_addr);
             end
-            leaf_wr_temp_req.a_x_id = leaf_wr_req_idx[$bits(req_i.a_x_id)-1:0];
+            //leaf_wr_temp_req.a_x_id = leaf_wr_req_idx[$bits(req_i.a_x_id)-1:0];
+            leaf_wr_temp_req.a_x_id = '0;
+            leaf_wr_temp_req.a_x_id[SB_IDX_W-1:0] = leaf_wr_req_idx;
             leaf_req_o = leaf_wr_temp_req;
             leaf_req_valid_o = 1'b1;
             // send the req
