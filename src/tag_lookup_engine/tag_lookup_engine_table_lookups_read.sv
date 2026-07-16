@@ -1,14 +1,3 @@
-module helpers #(
-  parameter type tag_req_t = logic,
-  parameter type axi_addr_t = logic
-)();
-  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
-    tag_req_t ret = desc;
-    ret.a_x_addr = addr;
-    return ret;
-  endfunction
-endmodule
-
 module tag_lookup_engine_table_lookups_read #(
   parameter type tag_req_t = logic,
   parameter type tag_read_resp_t = logic,
@@ -44,7 +33,11 @@ module tag_lookup_engine_table_lookups_read #(
   input  tag_read_resp_t leaf_resp_i
 );
 
-  helpers#(.tag_req_t(tag_req_t), .axi_addr_t(axi_addr_t)) h ();
+  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
+    tag_req_t ret = desc;
+    ret.a_x_addr = addr;
+    return ret;
+  endfunction
 
   // Scoreboard for tag read requests
   localparam int unsigned SB_IDX_W = $clog2(MAX_IN_FLIGHT);
@@ -109,7 +102,7 @@ module tag_lookup_engine_table_lookups_read #(
       // ... until we find an allocated entry without the root request sent
       if (sb_d[idx].allocated && !sb_d[idx].root_sent) begin
         root_req_valid_o = 1'b1;
-        root_req_o = h.desc_with_addr(sb_d[idx].req_payload, sb_d[idx].root_idx);
+        root_req_o = desc_with_addr(sb_d[idx].req_payload, sb_d[idx].root_idx);
         root_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0]; // use scoreboard idx as id
         if (root_req_ready_i) sb_d[idx].root_sent = 1'b1;
         break; // maximum 1 request per cycle

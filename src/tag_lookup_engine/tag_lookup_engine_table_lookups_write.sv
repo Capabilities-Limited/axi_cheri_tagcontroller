@@ -1,37 +1,3 @@
-module write_lookup_helpers #(
-  parameter type tag_req_t = logic,
-  parameter type axi_addr_t = logic,
-  parameter type axi_slv_id_t = logic
-)();
-  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
-    tag_req_t ret = desc;
-    ret.a_x_addr = addr;
-    return ret;
-  endfunction
-  function automatic tag_req_t simple_read_desc(axi_slv_id_t id, axi_addr_t addr);
-    tag_req_t ret = '0;
-    ret.a_x_id = id;
-    ret.a_x_addr = addr;
-    ret.a_x_len = '0;
-    ret.a_x_size = '0;
-    ret.a_x_burst = '0;
-    ret.a_x_lock = '0;
-    ret.a_x_cache = '0;
-    ret.a_x_prot = '0;
-    ret.x_resp = '0;
-    ret.x_last = 1'b1;
-    // Cache specific descriptor signals
-    ret.spm = '0;
-    ret.rw = '0; // read
-    ret.way_ind = '0;
-    ret.evict = '0;
-    ret.evict_tag = '0;
-    ret.refill = '0;
-    ret.flush = '0;
-    return ret;
-  endfunction
-endmodule
-
 module tag_lookup_engine_table_lookups_write #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
@@ -95,9 +61,34 @@ module tag_lookup_engine_table_lookups_write #(
   localparam int unsigned LEAF_FLITS = (GROUPING_FACTOR + BITS_PER_LEAF_FLIT - 1) / BITS_PER_LEAF_FLIT;
   localparam int unsigned FLIT_CNT_W = (LEAF_FLITS > 1) ? $clog2(LEAF_FLITS) : 1;
 
-  write_lookup_helpers #(.tag_req_t(tag_req_t),
-                         .axi_addr_t(axi_addr_t),
-                         .axi_slv_id_t(axi_slv_id_t)) h ();
+  function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
+    tag_req_t ret = desc;
+    ret.a_x_addr = addr;
+    return ret;
+  endfunction
+
+  function automatic tag_req_t simple_read_desc(axi_slv_id_t id, axi_addr_t addr);
+    tag_req_t ret = '0;
+    ret.a_x_id = id;
+    ret.a_x_addr = addr;
+    ret.a_x_len = '0;
+    ret.a_x_size = '0;
+    ret.a_x_burst = '0;
+    ret.a_x_lock = '0;
+    ret.a_x_cache = '0;
+    ret.a_x_prot = '0;
+    ret.x_resp = '0;
+    ret.x_last = 1'b1;
+    // Cache specific descriptor signals
+    ret.spm = '0;
+    ret.rw = '0; // read
+    ret.way_ind = '0;
+    ret.evict = '0;
+    ret.evict_tag = '0;
+    ret.refill = '0;
+    ret.flush = '0;
+    return ret;
+  endfunction
 
   // Scoreboard tracking structure
   typedef struct packed {
@@ -200,7 +191,7 @@ module tag_lookup_engine_table_lookups_write #(
       root_rd_req_idx = retire_ptr_q + i;
       if (sb_d[root_rd_req_idx].allocated && !sb_d[root_rd_req_idx].root_rd_sent ) begin
         root_rd_req_valid_o = 1'b1;
-        root_rd_req_o = h.simple_read_desc(root_rd_req_idx[SB_IDX_W-1:0], sb_d[root_rd_req_idx].root_idx);
+        root_rd_req_o = simple_read_desc(root_rd_req_idx[SB_IDX_W-1:0], sb_d[root_rd_req_idx].root_idx);
         if (root_rd_req_ready_i) sb_d[root_rd_req_idx].root_rd_sent = 1'b1;
         break;
       end
@@ -239,7 +230,7 @@ module tag_lookup_engine_table_lookups_write #(
       if (sb_d[root_wr_req_idx].allocated && root_wr_rd_ready && root_wr_needed) begin
         if (!sb_d[root_wr_req_idx].root_wr_sent) begin
           root_req_valid_o = 1'b1;
-          root_req_o = h.desc_with_addr(sb_d[root_wr_req_idx].req, sb_d[root_wr_req_idx].root_idx);
+          root_req_o = desc_with_addr(sb_d[root_wr_req_idx].req, sb_d[root_wr_req_idx].root_idx);
           root_req_o.a_x_id = root_wr_req_idx[$bits(req_i.a_x_id)-1:0];
           if (root_req_ready_i) sb_d[root_wr_req_idx].root_wr_sent = 1'b1;
         end
@@ -279,9 +270,9 @@ module tag_lookup_engine_table_lookups_write #(
           leaf_wr_current_req_flit = sb_d[leaf_wr_req_idx].leaf_wr_req_flit_cnt;
           if (!sb_d[leaf_wr_req_idx].leaf_wr_sent) begin
             if (sb_d[leaf_wr_req_idx].leaf_wr_synth_zero_line) begin
-              leaf_wr_temp_req = h.desc_with_addr(sb_d[leaf_wr_req_idx].req, leaf_wr_line_addr + (axi_addr_t'(leaf_wr_current_req_flit) << $clog2(BITS_PER_LEAF_FLIT)));
+              leaf_wr_temp_req = desc_with_addr(sb_d[leaf_wr_req_idx].req, leaf_wr_line_addr + (axi_addr_t'(leaf_wr_current_req_flit) << $clog2(BITS_PER_LEAF_FLIT)));
             end else begin
-              leaf_wr_temp_req = h.desc_with_addr(sb_d[leaf_wr_req_idx].req, sb_d[leaf_wr_req_idx].req.a_x_addr);
+              leaf_wr_temp_req = desc_with_addr(sb_d[leaf_wr_req_idx].req, sb_d[leaf_wr_req_idx].req.a_x_addr);
             end
             leaf_wr_temp_req.a_x_id = leaf_wr_req_idx[$bits(req_i.a_x_id)-1:0];
             leaf_req_o = leaf_wr_temp_req;
