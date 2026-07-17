@@ -271,10 +271,11 @@ module hpdcache_wrapper #(
     userCfg.wordUserWidth = 1;
     `ifdef VERILATOR
     userCfg.sets = 2;
+    userCfg.ways = 2;
     `else
     userCfg.sets = 256; // 256x4x16=16KB
-    `endif
     userCfg.ways = 4;
+    `endif
     userCfg.clWords = 256;
     userCfg.reqWords = cache_req_words;
     userCfg.reqTransIdWidth = 6;

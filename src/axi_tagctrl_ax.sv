@@ -74,10 +74,7 @@ module axi_tagctrl_ax #(
   // Used to compute the end addr (addr begin + len)
   addr_t addr_end;
   // Tag address offset to fetch
-  addr_t tag_addr, tag_hi_addr, tag_off;
-  // Used to compute the number of beats needed for the Tage Cache request
-  axi_pkg::len_t tagc_desc_len;
-  logic [$clog2(Cfg.tagc_cfg.BlockSize / 8)-1:0] tagc_blk_ind_begin, tagc_blk_ind_end;
+  addr_t tag_addr, tag_off;
 
   // output assignments
   assign tagctrl_desc_o = tagctrl_desc_q;
@@ -87,18 +84,6 @@ module axi_tagctrl_ax #(
   assign ax_mem_chan_mst_o = slv_chan_q;
   assign ax_mem_chan_valid_o = slv_chan_valid_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
-  assign addr_end = ax_chan_slv_i.addr + (ax_chan_slv_i.len << $clog2(Cfg.tagc_cfg.BlockSize / 8));
-  assign tagc_blk_ind_begin = ax_chan_slv_i.addr[($clog2(
-      Cfg.tagc_cfg.BlockSize*(Cfg.CapSize/8)
-  ))+:$clog2(
-      Cfg.tagc_cfg.BlockSize/8
-  )];
-  assign tagc_blk_ind_end = addr_end[($clog2(
-      Cfg.tagc_cfg.BlockSize*(Cfg.CapSize/8)
-  ))+:$clog2(
-      Cfg.tagc_cfg.BlockSize/8
-  )];
-  assign tagc_desc_len = $unsigned(tagc_blk_ind_end - tagc_blk_ind_begin);
 `ifdef PULP_LLC
   assign tag_off = $unsigned(
       ax_chan_slv_i.addr - Cfg.DRAMMemBase
@@ -163,12 +148,15 @@ module axi_tagctrl_ax #(
             axi_tagctrl_pkg::AxReqId
             ),
             a_x_addr: tag_addr,
-            a_x_len: tagc_desc_len,
-            a_x_size: ax_chan_slv_i.size,
-            a_x_burst: ax_chan_slv_i.burst,
-            a_x_lock: ax_chan_slv_i.lock,
-            a_x_prot: ax_chan_slv_i.prot,
-            a_x_cache: ax_chan_slv_i.cache,
+            a_x_len: 0,
+            a_x_size: 0, // Supports 8 tag bits or less
+            a_x_burst: axi_pkg::BURST_INCR,
+            a_x_lock: 1'b0,
+            a_x_prot: 1'b0,
+            a_x_cache: (axi_pkg::CACHE_BUFFERABLE |
+                        axi_pkg::CACHE_MODIFIABLE |
+                        axi_pkg::CACHE_RD_ALLOC   |
+                        axi_pkg::CACHE_WR_ALLOC),
             x_resp: axi_pkg::RESP_OKAY,
             x_last: 1'b1,
             rw: Write,
@@ -204,7 +192,6 @@ module axi_tagctrl_ax #(
             a_x_addr: ax_chan_slv_i.addr,
             a_x_len: ax_chan_slv_i.len,
             a_x_size: ax_chan_slv_i.size,
-            a_x_tag_len: tagc_desc_len,
             default: '0
         };
         load_tagctrl_desc = 1'b1;
