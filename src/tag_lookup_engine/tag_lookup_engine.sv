@@ -320,21 +320,21 @@ module tag_lookup_engine #(
     .read_req_ready_o(leaf_read_req_ready),
     .read_req_i(leaf_read_req),
     // incoming write tag request descriptor
-    .write_req_valid_i({leaf_write_req_valid}),
-    .write_req_ready_o({leaf_write_req_ready}),
-    .write_req_i({leaf_write_req}),
+    .write_req_valid_i('{leaf_write_req_valid}),
+    .write_req_ready_o('{leaf_write_req_ready}),
+    .write_req_i('{leaf_write_req}),
     // incoming write data
-    .write_data_req_valid_i({leaf_write_data_req_valid}),
-    .write_data_req_ready_o({leaf_write_data_req_ready}),
-    .write_data_req_i({leaf_write_data_req}),
+    .write_data_req_valid_i('{leaf_write_data_req_valid}),
+    .write_data_req_ready_o('{leaf_write_data_req_ready}),
+    .write_data_req_i('{leaf_write_data_req}),
     // outgoing read response
     .read_resp_valid_o(leaf_read_resp_valid),
     .read_resp_ready_i(leaf_read_resp_ready),
     .read_resp_o(leaf_read_resp),
     // outgoing write response
-    .write_resp_valid_o({leaf_write_resp_valid}),
-    .write_resp_ready_i({leaf_write_resp_ready}),
-    .write_resp_o({leaf_write_resp}),
+    .write_resp_valid_o('{leaf_write_resp_valid}),
+    .write_resp_ready_i('{leaf_write_resp_ready}),
+    .write_resp_o('{leaf_write_resp}),
 
     .isolate_o,
     .isolated_i,
