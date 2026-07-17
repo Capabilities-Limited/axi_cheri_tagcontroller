@@ -299,7 +299,6 @@ module llc_cache_wrapper #(
     axi_pkg::size_t a_x_size;  // AXI burst size
     axi_pkg::burst_t a_x_burst;  // AXI burst type
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
-    axi_pkg::len_t a_x_tag_len;  // Tag len request to the Tag Cache
     logic x_last;  // Last descriptor of a burst
     // Cache specific descriptor signals
     logic spm;  // this descriptor targets a SPM region in the cache

@@ -162,7 +162,7 @@ module axi_tagctrl_top #(
       TagCacheMemBase: TagCacheMemBase,
       TagWFifoDepth: 4,
       TagAXFifoDepth: 4,
-      TagRFifoDepth: 8,
+      TagRFifoDepth: 32,
       tagc_cfg: LLC_Cfg
   };
 
@@ -240,7 +240,6 @@ module axi_tagctrl_top #(
     axi_pkg::size_t a_x_size;  // AXI burst size
     axi_pkg::burst_t a_x_burst;  // AXI burst type
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
-    axi_pkg::len_t a_x_tag_len;  // Tag len request to the Tag Cache
     logic x_last;  // Last descriptor of a burst
     // Cache specific descriptor signals
     logic spm;  // this descriptor targets a SPM region in the cache
