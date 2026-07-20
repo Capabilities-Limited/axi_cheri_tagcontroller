@@ -70,8 +70,12 @@ module tag_lookup_engine_table_lookups_read #(
 
   // Service tag read requests
   always_comb begin
+
+    // local helper variables
+    automatic sb_entry_t sb_alloc;
+    automatic sb_entry_t [MAX_IN_FLIGHT-1:0] sb_r = sb_q;
+
     // Default register assignments
-    sb_d = sb_q;
     alloc_ptr_d = alloc_ptr_q;
     retire_ptr_d = retire_ptr_q;
 
@@ -81,16 +85,18 @@ module tag_lookup_engine_table_lookups_read #(
     req_ready_o = !sb_q[alloc_ptr_q].allocated;
     // if a request is presente and consumed, allocate it to the score board
     if (req_valid_i && req_ready_o) begin
-      sb_d[alloc_ptr_q].allocated = 1'b1;
-      sb_d[alloc_ptr_q].root_sent = 1'b0;
-      sb_d[alloc_ptr_q].leaf_sent = 1'b0;
-      sb_d[alloc_ptr_q].root_received = 1'b0;
-      sb_d[alloc_ptr_q].leaf_received = 1'b0;
-      sb_d[alloc_ptr_q].root_idx = root_idx_i;
-      sb_d[alloc_ptr_q].req_payload = req_i;
-      sb_d[alloc_ptr_q].og_id = req_i.a_x_id;
-      alloc_ptr_d = alloc_ptr_q + 1; // bump allocation slot
+      sb_alloc.allocated = 1'b1;
+      sb_alloc.root_sent = 1'b0;
+      sb_alloc.leaf_sent = 1'b0;
+      sb_alloc.root_received = 1'b0;
+      sb_alloc.leaf_received = 1'b0;
+      sb_alloc.root_idx = root_idx_i;
+      sb_alloc.req_payload = req_i;
+      sb_alloc.og_id = req_i.a_x_id;
+      alloc_ptr_d = alloc_ptr_q + 1;
+      sb_r[alloc_ptr_q] = sb_alloc;
     end
+    sb_d = sb_r;
 
     // root requests handling //
     // don't send any root requests ...
@@ -100,9 +106,9 @@ module tag_lookup_engine_table_lookups_read #(
       // (in case of alloc wrap around, starting from 0 risks changing selected req)
       automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
       // ... until we find an allocated entry without the root request sent
-      if (sb_d[idx].allocated && !sb_d[idx].root_sent) begin
+      if (sb_r[idx].allocated && !sb_r[idx].root_sent) begin
         root_req_valid_o = 1'b1;
-        root_req_o = desc_with_addr(sb_d[idx].req_payload, sb_d[idx].root_idx);
+        root_req_o = desc_with_addr(sb_r[idx].req_payload, sb_r[idx].root_idx);
         //root_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0]; // use scoreboard idx as id
         root_req_o.a_x_id = '0;
         root_req_o.a_x_id[SB_IDX_W-1:0] = idx; // use scoreboard idx as id
@@ -115,9 +121,9 @@ module tag_lookup_engine_table_lookups_read #(
     leaf_req_valid_o = 1'b0;
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
-      if (sb_d[idx].allocated && !sb_d[idx].leaf_sent) begin
+      if (sb_r[idx].allocated && !sb_r[idx].leaf_sent) begin
         leaf_req_valid_o = 1'b1;
-        leaf_req_o = sb_d[idx].req_payload;
+        leaf_req_o = sb_r[idx].req_payload;
         //leaf_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0];
         leaf_req_o.a_x_id = '0;
         leaf_req_o.a_x_id[SB_IDX_W-1:0] = idx;
@@ -146,14 +152,14 @@ module tag_lookup_engine_table_lookups_read #(
     // retire scoreboard entry //
     resp_valid_o = 1'b0; // don't send any response until ...
     // ... all responses are received for the entry in the retire slot
-    if (sb_d[retire_ptr_q].allocated &&
-        sb_d[retire_ptr_q].root_received &&
-        sb_d[retire_ptr_q].leaf_received) begin
+    if (sb_r[retire_ptr_q].allocated &&
+        sb_r[retire_ptr_q].root_received &&
+        sb_r[retire_ptr_q].leaf_received) begin
       resp_valid_o = 1'b1; // send response
       // TODO only test the relevant bit of the root_resp
-      if (sb_d[retire_ptr_q].root_resp == 0) resp_o = sb_d[retire_ptr_q].root_resp;
-      else resp_o = sb_d[retire_ptr_q].leaf_resp;
-      resp_o.id = sb_d[retire_ptr_q].og_id; // overwrite id with original request id
+      if (sb_r[retire_ptr_q].root_resp == 0) resp_o = sb_r[retire_ptr_q].root_resp;
+      else resp_o = sb_r[retire_ptr_q].leaf_resp;
+      resp_o.id = sb_r[retire_ptr_q].og_id; // overwrite id with original request id
       if (resp_ready_i) begin // when the response is consumed ...
         sb_d[retire_ptr_q].allocated = 1'b0; // deallocate scoreboard entry
         retire_ptr_d = retire_ptr_q + 1; // bump retire slot
