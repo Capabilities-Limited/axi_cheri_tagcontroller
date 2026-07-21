@@ -236,8 +236,11 @@ module tag_lookup_engine_table_lookups_write #(
       automatic logic root_wr_sent, root_wr_data_sent;
       automatic logic [SB_IDX_W-1:0] req_idx = retire_ptr_q + i;
       automatic logic [ROOT_BIT_IDX_W-1:0] bit_idx = sb_r[req_idx].root_idx[ROOT_BIT_IDX_W-1:0];
-      root_wr_rd_ready = sb_r[req_idx].write_is_nonzero || root_rd_received[req_idx];
-      root_wr_needed = sb_r[req_idx].write_is_nonzero && !root_is_one[req_idx];
+      //root_wr_rd_ready = sb_r[req_idx].write_is_nonzero || root_rd_received[req_idx];
+      //root_wr_rd_ready = root_rd_received[req_idx];
+      root_wr_rd_ready = sb_r[req_idx].root_rd_received;
+      //root_wr_needed = sb_r[req_idx].write_is_nonzero && !root_is_one[req_idx];
+      root_wr_needed = sb_r[req_idx].write_is_nonzero && !sb_r[req_idx].root_is_one;
       root_wr_sent = sb_r[req_idx].root_wr_sent;
       root_wr_data_sent = sb_r[req_idx].root_wr_data_sent;
 
@@ -275,18 +278,22 @@ module tag_lookup_engine_table_lookups_write #(
 
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] req_idx = retire_ptr_q + i;
-      leaf_wr_rd_ready = sb_r[req_idx].write_is_nonzero || root_rd_received[req_idx];
-      leaf_wr_needed = sb_r[req_idx].write_is_nonzero || root_is_one[req_idx];
+      //leaf_wr_rd_ready = sb_r[req_idx].write_is_nonzero || root_rd_received[req_idx];
+      leaf_wr_rd_ready = sb_r[req_idx].write_is_nonzero || sb_r[req_idx].root_rd_received;
+      //leaf_wr_needed = sb_r[req_idx].write_is_nonzero || root_is_one[req_idx];
+      leaf_wr_needed = sb_r[req_idx].write_is_nonzero || sb_r[req_idx].root_is_one;
 
       // is the current entry qualifying as needing leaf writes
-      if (sb_r[req_idx].allocated && leaf_wr_rd_ready && leaf_wr_needed && root_rd_received[req_idx]) begin
+      //if (sb_r[req_idx].allocated && leaf_wr_rd_ready && leaf_wr_needed && root_rd_received[req_idx]) begin
+      if (sb_r[req_idx].allocated && leaf_wr_rd_ready && leaf_wr_needed && sb_r[req_idx].root_rd_received) begin
         // More flits to go? otherwise, continue to next entry
         leaf_wr_line_addr = sb_r[req_idx].req.a_x_addr & ~((axi_addr_t'(1) << $clog2(GROUPING_FACTOR)) - 1);
         if (!sb_r[req_idx].leaf_wr_sent || !sb_r[req_idx].leaf_wr_data_sent) begin
           // request
           leaf_wr_current_req_flit = sb_r[req_idx].leaf_wr_req_flit_cnt;
           if (!sb_r[req_idx].leaf_wr_sent) begin
-            if (leaf_wr_synth_zero_line[req_idx]) begin
+            //if (leaf_wr_synth_zero_line[req_idx]) begin
+            if (sb_r[req_idx].leaf_wr_synth_zero_line) begin
               leaf_wr_temp_req = desc_with_addr(sb_r[req_idx].req, leaf_wr_line_addr + (axi_addr_t'(leaf_wr_current_req_flit) << $clog2(BITS_PER_LEAF_FLIT)));
             end else begin
               leaf_wr_temp_req = desc_with_addr(sb_r[req_idx].req, sb_r[req_idx].req.a_x_addr);
@@ -299,7 +306,8 @@ module tag_lookup_engine_table_lookups_write #(
             if (leaf_req_ready_i) begin
               sb_d[req_idx].leaf_wr_req_flit_cnt = sb_r[req_idx].leaf_wr_req_flit_cnt + 1;
               // was it the last flit?
-              if (!leaf_wr_synth_zero_line[req_idx] || sb_r[req_idx].leaf_wr_req_flit_cnt == LEAF_FLITS - 1) begin
+              //if (!leaf_wr_synth_zero_line[req_idx] || sb_r[req_idx].leaf_wr_req_flit_cnt == LEAF_FLITS - 1) begin
+              if (!sb_r[req_idx].leaf_wr_synth_zero_line || sb_r[req_idx].leaf_wr_req_flit_cnt == LEAF_FLITS - 1) begin
                 sb_d[req_idx].leaf_wr_sent = 1'b1;
               end
             end
@@ -314,7 +322,8 @@ module tag_lookup_engine_table_lookups_write #(
             leaf_data_o.strb = sb_r[req_idx].data.strb;
             // if root was 0, need 0 leaf line synthesis, so 0 flits for the flits that aren't the
             // one pointed at
-            if (sb_r[req_idx].write_is_nonzero && !root_is_one[req_idx] && leaf_wr_current_data_flit != leaf_wr_target_flit) begin
+            //if (sb_r[req_idx].write_is_nonzero && !root_is_one[req_idx] && leaf_wr_current_data_flit != leaf_wr_target_flit) begin
+            if (sb_r[req_idx].write_is_nonzero && !sb_r[req_idx].root_is_one && leaf_wr_current_data_flit != leaf_wr_target_flit) begin
               leaf_data_o = tag_data_req_t'('0);
               leaf_data_o.data = '0;
               leaf_data_o.bit_en = '1;
@@ -325,7 +334,8 @@ module tag_lookup_engine_table_lookups_write #(
             if (leaf_data_ready_i) begin
               sb_d[req_idx].leaf_wr_data_flit_cnt = sb_r[req_idx].leaf_wr_data_flit_cnt + 1;
               // was it the last flit?
-              if (!leaf_wr_synth_zero_line[req_idx] || sb_r[req_idx].leaf_wr_data_flit_cnt == LEAF_FLITS - 1) begin
+              //if (!leaf_wr_synth_zero_line[req_idx] || sb_r[req_idx].leaf_wr_data_flit_cnt == LEAF_FLITS - 1) begin
+              if (!sb_r[req_idx].leaf_wr_synth_zero_line || sb_r[req_idx].leaf_wr_data_flit_cnt == LEAF_FLITS - 1) begin
                 sb_d[req_idx].leaf_wr_data_sent = 1'b1;
               end
             end
@@ -340,7 +350,8 @@ module tag_lookup_engine_table_lookups_write #(
       automatic logic [SB_IDX_W-1:0] resp_idx = leaf_resp_i.id[SB_IDX_W-1:0];
       sb_d[resp_idx].leaf_wr_resp = leaf_resp_i;
       sb_d[resp_idx].leaf_wr_resp_cnt = sb_r[resp_idx].leaf_wr_resp_cnt + 1;
-      if (sb_q[resp_idx].leaf_wr_resp_cnt == (leaf_wr_synth_zero_line[resp_idx] ? LEAF_FLITS - 1 : 0)) begin
+      //if (sb_q[resp_idx].leaf_wr_resp_cnt == (leaf_wr_synth_zero_line[resp_idx] ? LEAF_FLITS - 1 : 0)) begin
+      if (sb_q[resp_idx].leaf_wr_resp_cnt == (sb_r[resp_idx].leaf_wr_synth_zero_line ? LEAF_FLITS - 1 : 0)) begin
         sb_d[resp_idx].leaf_wr_received = 1'b1;
       end
     end
