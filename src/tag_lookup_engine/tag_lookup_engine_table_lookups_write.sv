@@ -197,7 +197,7 @@ module tag_lookup_engine_table_lookups_write #(
     root_rd_req_valid_o = 1'b0;
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
-      if (sb_r[idx].allocated && !sb_r[idx].root_rd_sent ) begin
+      if (sb_r[idx].allocated && !sb_r[idx].root_rd_sent) begin
         root_rd_req_valid_o = 1'b1;
         root_rd_req_o = simple_read_desc(idx, sb_r[idx].root_idx);
         if (root_rd_req_ready_i) sb_d[idx].root_rd_sent = 1'b1;
@@ -232,6 +232,7 @@ module tag_lookup_engine_table_lookups_write #(
     // send needed root write requests
     root_req_valid_o = 1'b0;
     root_data_valid_o = 1'b0;
+
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic root_wr_sent, root_wr_data_sent;
       automatic logic [SB_IDX_W-1:0] req_idx = retire_ptr_q + i;
@@ -261,7 +262,7 @@ module tag_lookup_engine_table_lookups_write #(
         end
         sb_d[req_idx].root_wr_sent = root_wr_sent;
         sb_d[req_idx].root_wr_data_sent = root_wr_data_sent;
-        if (!root_wr_sent || !root_wr_data_sent) break;
+        if (!sb_r[req_idx].root_wr_sent || !sb_r[req_idx].root_wr_data_sent) break;
       end
     end
     // collect root write responses
