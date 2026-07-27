@@ -19,6 +19,9 @@
 #include "Vtag_ctrl_testharness_tag_ctrl_testharness.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"
+#ifdef COVERAGE
+#include "verilated_cov.h"
+#endif
 
 #include <cstdlib>
 #include <time.h>
@@ -66,6 +69,9 @@ protected:
 
   void TearDown()
   {
+#ifdef COVERAGE
+    Verilated::threadContextp()->coveragep()->write("coverage.dat");
+#endif
     delete top;
 #if VM_TRACE
     tfp->close();

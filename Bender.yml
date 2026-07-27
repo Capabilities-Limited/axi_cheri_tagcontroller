@@ -54,3 +54,11 @@ sources:
       - test/hdl/axi2mem.sv
       - test/hdl/tag_ctrl_testharness.sv
 
+
+  - target: all(tb, coverage)
+    include_dirs:
+      - cov
+    files:
+      - cov/tag_lookup_engine/tag_lookup_engine_root_init_cov.sv
+      - cov/tag_lookup_engine/tag_lookup_engine_table_lookups_read_cov.sv
+      - cov/tag_lookup_engine/tag_lookup_engine_table_lookups_write_cov.sv

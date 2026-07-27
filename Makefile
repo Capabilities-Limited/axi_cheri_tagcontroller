@@ -17,8 +17,15 @@ bender_tool    ?= bender
 verilator      ?= verilator
 # verible tool
 verible        ?= verible-verilog-format
-# source files
-src          := $(shell $(bender_tool) script verilator -t synthesis -t synth_test -t tb)
+# source files (conditionally include coverage)
+COVERAGE ?= 0
+ifeq ($(COVERAGE), 1)
+src := $(shell $(bender_tool) script verilator -t synthesis -t synth_test -t tb -t coverage)
+VERILATOR_COV_FLAG := --coverage-user
+else
+src := $(shell $(bender_tool) script verilator -t synthesis -t synth_test -t tb)
+VERILATOR_COV_FLAG :=
+endif
 src_cpp      := $(wildcard $(ROOT_PATH)/test/src/*.cpp)
 # verilator lib
 ver-library    ?= work-ver
@@ -42,17 +49,21 @@ GTEST_DEFINES := -DBUILD_GMOCK=OFF
 #Verilator Flags
 CFLAGS := -I$(RISCV)/include                            \
           -std=c++17                                    \
-		  -I$(GTEST_BUILD)/googletest/include/          \
+	  -I$(GTEST_BUILD)/googletest/include/          \
           -I$(ROOT_PATH)test/src/inc/                   \
-		  -O3
-		  #-I$(VERILATOR_ROOT)                           \
+	  -O3
+	  #-I$(VERILATOR_ROOT)                           \
+
+ifeq ($(COVERAGE), 1)
+CFLAGS += -DCOVERAGE=1
+endif
 
 BUILD_MACROS := -DVL_DEBUG
 ifdef VM_TRACE
 BUILD_MACROS += -DVM_TRACE
 # Verilator simulator flags
 VCD_DUMP ?= "$(VER_BUILD_DIR)dump.vcd"
-endif 
+endif
 
 LDFLAGS := $(LDFLAGS) -L$(GTEST_BUILD)/lib -L$(RISCV)/lib          \
            -Wl,-rpath,$(RISCV)/lib 						\
@@ -66,6 +77,7 @@ endif
 
 # verilator-specific
 verilate_command := $(verilator)                                          \
+		    $(VERILATOR_COV_FLAG)                                 \
                     $(src)                                                \
                     --timing \
                     --unroll-count 256                                    \
@@ -143,6 +155,10 @@ runtests: $(VER_BUILD_DIR)V$(MODULE)_testharness.mk
 	@$(VER_BUILD_DIR)V$(MODULE)_testharness -v $(VER_LOGS_DIR)
 	@echo "<----Finish running Tests---->"
 
+.PHONY:gen-cov-rpt
+gen-cov-rpt: coverage.dat
+	verilator_coverage --filter-type "covergroup" --report summary,hier coverage.dat > coverage.rpt
+
 .PHONY:lint
 verilator-lint:
 	$(verilate_lint_command)
@@ -171,7 +187,8 @@ $(VER_BUILD_DIR):
 clean:
 	rm -rf .stamp.*;
 	rm -rf $(VER_BUILD_DIR)
-	rm -rf $(VER_LOGS_DIR)    
+	rm -rf $(VER_LOGS_DIR)
 	rm -f tmp/*.ucdb tmp/*.log *.wlf *vstf wlft* *.ucdb
 	rm -rf *.vcd
 	rm -rf .bender
+	rm -rf coverage.dat coverage.rpt
