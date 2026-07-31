@@ -493,7 +493,8 @@ module tag_lookup_engine_table_lookups #(
     .tag_req_t(tag_req_t),
     .tag_data_req_t(tag_data_req_t),
     .tag_write_resp_t(tag_write_resp_t),
-    .axi_addr_t(axi_addr_t)
+    .axi_addr_t(axi_addr_t),
+    .BITS_PER_ROOT_FLIT(BITS_PER_ROOT_FLIT)
   ) i_tag_lookup_engine_root_init (
     .clk_i,
     .rst_ni,

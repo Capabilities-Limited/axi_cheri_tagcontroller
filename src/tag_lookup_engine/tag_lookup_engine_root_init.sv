@@ -2,7 +2,8 @@ module tag_lookup_engine_root_init #(
   parameter type tag_req_t = logic,
   parameter type tag_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
-  parameter type axi_addr_t = logic
+  parameter type axi_addr_t = logic,
+  parameter int unsigned BITS_PER_ROOT_FLIT = 4
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -49,7 +50,7 @@ module tag_lookup_engine_root_init #(
   always_comb begin
     // TODO sanity check current place holder values here
     root_write_req_o = '0;
-    root_write_req_o.a_x_addr = req_cnt_q;
+    root_write_req_o.a_x_addr = req_cnt_q * BITS_PER_ROOT_FLIT;
     root_write_req_o.rw = 1'b1;
     root_write_data_req_o = '0;
   end
@@ -89,7 +90,7 @@ module tag_lookup_engine_root_init #(
         // book keeping based on handshake happening
         if (req_hs) req_cnt_d = req_cnt_q + 1'b1;
         // check whether the last request was sent
-        if (req_hs && (req_cnt_q == root_table_size_i - 1'b1)) begin
+        if (req_hs && (req_cnt_q * BITS_PER_ROOT_FLIT == root_table_size_i * 8 - BITS_PER_ROOT_FLIT)) begin
           state_d = INIT_WAIT_WRITE_RSP;
         end
         // book keep for responses
@@ -103,7 +104,7 @@ module tag_lookup_engine_root_init #(
         root_write_resp_ready_o = 1'b1;
         if (resp_hs) resp_cnt_d = resp_cnt_q + 1'b1;
         // check whether the last response was received
-        if (resp_cnt_d == root_table_size_i) begin
+        if (resp_cnt_d * BITS_PER_ROOT_FLIT == root_table_size_i * 8) begin
           state_d = READY;
         end
       end
