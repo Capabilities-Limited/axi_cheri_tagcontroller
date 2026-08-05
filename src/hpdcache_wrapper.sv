@@ -325,7 +325,7 @@ module hpdcache_wrapper #(
   localparam type wbuf_timecnt_t = logic unsigned [HPDcacheCfg.u.wbufTimecntWidth-1:0];
   localparam type hpdcache_tag_t = logic [HPDcacheCfg.tagWidth-1:0];
   localparam type hpdcache_data_word_t = logic [HPDcacheCfg.u.wordWidth-1:0];
-  localparam type hpdcache_data_be_t = logic [HPDcacheCfg.u.reqWords-1:0];
+  localparam type hpdcache_data_be_t = logic [(HPDcacheCfg.u.wordWidth+8-1)/8-1:0];
   localparam type hpdcache_req_offset_t = logic [HPDcacheCfg.reqOffsetWidth-1:0];
   localparam type hpdcache_req_data_t = hpdcache_data_word_t [HPDcacheCfg.u.reqWords-1:0];
   localparam type hpdcache_req_be_t = hpdcache_data_be_t [HPDcacheCfg.u.reqWords-1:0];
