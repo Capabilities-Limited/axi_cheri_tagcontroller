@@ -351,17 +351,10 @@ module tag_lookup_engine #(
   // converge tag store memory traffic
   //////////////////////////////////////////////////////////////////////////////
 
-  function automatic slv_req_t to_tag_table_byte_req(axi_addr_t table_base_addr, slv_req_t req);
+  function automatic slv_req_t table_offset_req(axi_addr_t table_base_addr, slv_req_t req);
     slv_req_t ret = req;
-`ifdef PULP_LLC
     ret.aw.addr = req.aw.addr + table_base_addr;
     ret.ar.addr = req.ar.addr + table_base_addr;
-`else
-    ret.aw.addr = (req.aw.addr>>3) + table_base_addr;
-    ret.aw.size = req.aw.size - 3;
-    ret.ar.addr = (req.ar.addr>>3) + table_base_addr;
-    ret.ar.size = req.ar.size - 3;
-`endif
     return ret;
   endfunction
 
@@ -392,8 +385,8 @@ module tag_lookup_engine #(
     .clk_i,
     .rst_ni,
     .test_i(1'b0),
-    .slv_reqs_i ({to_tag_table_byte_req(root_table_base_addr, root_mem_req),
-                  to_tag_table_byte_req(leaf_table_base_addr, leaf_mem_req)}),
+    .slv_reqs_i ({table_offset_req(root_table_base_addr, root_mem_req),
+                  table_offset_req(leaf_table_base_addr, leaf_mem_req)}),
     .slv_resps_o({root_mem_resp, leaf_mem_resp}),
     .mst_req_o  (mem_req_o),
     .mst_resp_i (mem_resp_i)
