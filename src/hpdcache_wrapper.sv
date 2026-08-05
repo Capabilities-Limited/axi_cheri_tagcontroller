@@ -298,15 +298,17 @@ module hpdcache_wrapper #(
                   hpdcache_req_data_t,
                   hpdcache_req_sid_t,
                   hpdcache_req_tid_t);
-  localparam type hpdcache_mem_addr_t = logic [HPDcacheCfg.u.memAddrWidth-1:0];
-  localparam type hpdcache_mem_id_t   = logic [HPDcacheCfg.u.memIdWidth-1:0];
-  localparam type hpdcache_mem_data_t = logic [HPDcacheCfg.u.memDataWidth-1:0];
-  localparam type hpdcache_mem_be_t   = logic [HPDcacheCfg.u.memDataWidth/8-1:0];
+  localparam type hpdcache_mem_addr_t   = logic [HPDcacheCfg.u.memAddrWidth-1:0];
+  localparam type hpdcache_mem_id_t     = logic [HPDcacheCfg.u.memIdWidth-1:0];
+  localparam type hpdcache_mem_data_t   = logic [HPDcacheCfg.u.memDataWidth-1:0];
+  localparam type hpdcache_mem_bit_en_t = logic [HPDcacheCfg.u.memDataWidth-1:0];
+  localparam type hpdcache_mem_be_t     = logic [HPDcacheCfg.u.memDataWidth/8-1:0];
 
   //  Declaration of internal types
   //  {{{
   `HPDCACHE_TYPEDEF_MEM_REQ_T(hpdcache_mem_req_t, hpdcache_mem_addr_t, hpdcache_mem_id_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_R_T(hpdcache_mem_resp_r_t, hpdcache_mem_id_t, hpdcache_mem_data_t);
+  `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_bit_w_t, hpdcache_mem_data_t, hpdcache_mem_bit_en_t);
   `HPDCACHE_TYPEDEF_MEM_REQ_W_T(hpdcache_mem_req_w_t, hpdcache_mem_data_t, hpdcache_mem_be_t);
   `HPDCACHE_TYPEDEF_MEM_RESP_W_T(hpdcache_mem_resp_w_t, hpdcache_mem_id_t);
   //  }}}
@@ -338,10 +340,33 @@ module hpdcache_wrapper #(
   hpdcache_mem_req_t mem_req_write;
   logic mem_req_write_data_ready;
   logic mem_req_write_data_valid;
-  hpdcache_mem_req_w_t mem_req_write_data;
+  hpdcache_mem_req_bit_w_t mem_req_write_data;
   logic mem_resp_write_ready;
   logic mem_resp_write_valid;
   hpdcache_mem_resp_w_t mem_resp_write;
+
+  function automatic hpdcache_mem_req_t mem_req_bit_2_byte(hpdcache_mem_req_t req);
+    hpdcache_mem_req_t ret = req;
+    ret.mem_req_addr = req.mem_req_addr >> 3;
+    ret.mem_req_size = req.mem_req_size - 3;
+    return ret;
+  endfunction
+
+  function automatic hpdcache_mem_req_w_t mem_req_w_bit_2_byte(hpdcache_mem_req_bit_w_t req);
+    hpdcache_mem_req_w_t ret;
+    localparam int unsigned ratio = $bits(req.mem_req_w_be) / $bits(ret.mem_req_w_be);
+    for (int unsigned i = 0; i <= ratio; i++) begin
+      assert (^(req.mem_req_w_be[i*ratio +: ratio]) == 0) else begin
+        $display("TagController HPDCache must produce bit enables that can be expressed as byte enables. %x", req.mem_req_w_be);
+        $error("Exiting.");
+      end
+      ret.mem_req_w_be[i] = req.mem_req_w_be[i*ratio];
+    end
+    ret.mem_req_w_data = req.mem_req_w_data;
+    ret.mem_req_w_last = req.mem_req_w_last;
+    ret.mem_req_w_user = req.mem_req_w_user;
+    return ret;
+  endfunction
 
   hpdcache_mem_to_axi_read #(
     .hpdcache_mem_req_t(hpdcache_mem_req_t),
@@ -351,7 +376,7 @@ module hpdcache_wrapper #(
   ) i_hpdcache_mem_to_axi_read (
     .req_ready_o(mem_req_read_ready),
     .req_valid_i(mem_req_read_valid),
-    .req_i(mem_req_read),
+    .req_i(mem_req_bit_2_byte(mem_req_read)),
     .resp_ready_i(mem_resp_read_ready),
     .resp_valid_o(mem_resp_read_valid),
     .resp_o(mem_resp_read),
@@ -372,10 +397,10 @@ module hpdcache_wrapper #(
   ) i_hpdcache_mem_to_axi_write (
     .req_ready_o(mem_req_write_ready),
     .req_valid_i(mem_req_write_valid),
-    .req_i(mem_req_write),
+    .req_i(mem_req_bit_2_byte(mem_req_write)),
     .req_data_ready_o(mem_req_write_data_ready),
     .req_data_valid_i(mem_req_write_data_valid),
-    .req_data_i(mem_req_write_data),
+    .req_data_i(mem_req_w_bit_2_byte(mem_req_write_data)),
     .resp_ready_i(mem_resp_write_ready),
     .resp_valid_o(mem_resp_write_valid),
     .resp_o(mem_resp_write),
@@ -481,9 +506,9 @@ module hpdcache_wrapper #(
       .hpdcache_mem_addr_t  (hpdcache_mem_addr_t),
       .hpdcache_mem_id_t    (hpdcache_mem_id_t),
       .hpdcache_mem_data_t  (hpdcache_mem_data_t),
-      .hpdcache_mem_be_t    (hpdcache_mem_be_t),
+      .hpdcache_mem_be_t    (hpdcache_mem_bit_en_t),
       .hpdcache_mem_req_t   (hpdcache_mem_req_t),
-      .hpdcache_mem_req_w_t (hpdcache_mem_req_w_t),
+      .hpdcache_mem_req_w_t (hpdcache_mem_req_bit_w_t),
       .hpdcache_mem_resp_r_t(hpdcache_mem_resp_r_t),
       .hpdcache_mem_resp_w_t(hpdcache_mem_resp_w_t)
   ) i_hpdcache (
