@@ -321,7 +321,7 @@ module tag_lookup_engine_table_lookups_write #(
           // data
           leaf_wr_current_data_flit = sb_r[req_idx].leaf_wr_data_flit_cnt;
           if (!sb_r[req_idx].leaf_wr_data_sent) begin
-            leaf_wr_target_flit = sb_r[req_idx].req.a_x_addr & ((1 << $clog2(LEAF_FLITS)) - 1);
+            leaf_wr_target_flit = sb_r[req_idx].req.a_x_addr[$clog2(BITS_PER_LEAF_FLIT) +: FLIT_CNT_W];
 
             leaf_data_o.data = sb_r[req_idx].data.data;
             leaf_data_o.bit_en = sb_r[req_idx].data.bit_en;
