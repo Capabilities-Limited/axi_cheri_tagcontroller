@@ -195,6 +195,7 @@ module tag_lookup_engine_table_lookups_write #(
     ////////////////
     // send needed root read requests
     root_rd_req_valid_o = 1'b0;
+    root_rd_req_o = '0;
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
       if (sb_r[idx].allocated && !sb_r[idx].root_rd_sent) begin
@@ -231,7 +232,9 @@ module tag_lookup_engine_table_lookups_write #(
     /////////////////
     // send needed root write requests
     root_req_valid_o = 1'b0;
+    root_req_o = '0;
     root_data_valid_o = 1'b0;
+    root_data_o = '0;
 
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic root_wr_sent, root_wr_data_sent;
@@ -274,8 +277,10 @@ module tag_lookup_engine_table_lookups_write #(
 
     // leaf writes //
     /////////////////
-    leaf_req_valid_o  = 1'b0;
+    leaf_req_valid_o = 1'b0;
+    leaf_req_o = 'b0;
     leaf_data_valid_o = 1'b0;
+    leaf_data_o = 'b0;
 
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] req_idx = retire_ptr_q + i;
@@ -325,7 +330,6 @@ module tag_lookup_engine_table_lookups_write #(
             // one pointed at
             //if (sb_r[req_idx].write_is_nonzero && !root_is_one[req_idx] && leaf_wr_current_data_flit != leaf_wr_target_flit) begin
             if (sb_r[req_idx].write_is_nonzero && !sb_r[req_idx].root_is_one && leaf_wr_current_data_flit != leaf_wr_target_flit) begin
-              leaf_data_o = tag_data_req_t'('0);
               leaf_data_o.data = '0;
               leaf_data_o.bit_en = '1;
               leaf_data_o.strb = '1;
