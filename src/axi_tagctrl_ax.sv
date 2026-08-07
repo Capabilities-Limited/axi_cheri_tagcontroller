@@ -9,10 +9,6 @@
 module axi_tagctrl_ax #(
     /// Tag Controller configuration struct. Passed down from `axi_tagctrl_top.sv`.
     parameter axi_tagctrl_pkg::tagctrl_cfg_t Cfg = axi_tagctrl_pkg::tagctrl_cfg_t'{default: '0},
-    /// The type of channel, how the write bit in the descriptor should be set.
-    /// `0`: AR channel is connected, descriptors do read accesses.
-    /// `1`: AW channel is connected, descriptors do write accesses.
-    parameter bit Write = 1'b0,
     /// AXI Tag Controller descriptor type definition,
     parameter type tagctrl_desc_t = logic,
     /// AXI Tag Cache descriptor type definition,
@@ -84,16 +80,7 @@ module axi_tagctrl_ax #(
   assign ax_mem_chan_mst_o = slv_chan_q;
   assign ax_mem_chan_valid_o = slv_chan_valid_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
-`ifdef PULP_LLC
-  assign tag_off = $unsigned(
-      ax_chan_slv_i.addr - Cfg.DRAMMemBase
-  ) >> $clog2(
-      Cfg.tagc_cfg.BlockSize * (Cfg.CapSize / 8)
-  );
-  assign tag_addr = (tag_off << $clog2(Cfg.tagc_cfg.BlockSize / 8));
-`else
   assign tag_addr = $unsigned(ax_chan_slv_i.addr - Cfg.DRAMMemBase) >> $clog2(Cfg.CapSize / 8);
-`endif
 
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
@@ -155,7 +142,6 @@ module axi_tagctrl_ax #(
                         axi_pkg::CACHE_WR_ALLOC),
             x_resp: axi_pkg::RESP_OKAY,
             x_last: 1'b1,
-            rw: Write,
             default: '0
         };
         load_tagc_desc = 1'b1;

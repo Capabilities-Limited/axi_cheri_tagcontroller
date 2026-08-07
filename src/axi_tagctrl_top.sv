@@ -9,82 +9,41 @@
 
 module axi_tagctrl_top #(
     /// DRAM memory Base
-    parameter int unsigned DRAMMemBase      = 64'd0,
+    parameter int unsigned DRAMMemBase     = 64'd0,
     /// DRAM memory Length
-    parameter int unsigned DRAMMemLength    = 64'd0,
+    parameter int unsigned DRAMMemLength   = 64'd0,
     /// Capability size in memory
-    parameter int unsigned CapSize          = 128,
+    parameter int unsigned CapSize         = 128,
     /// Tag Cache base address in memory. Location of the Tag Cache
     /// structure
-    parameter int unsigned TagCacheMemBase  = 0,
-    /// The set-associativity of the Tag Cache.
-    ///
-    /// This parameter determines how many ways/sets will be instantiated.
-    ///
-    /// Restrictions:
-    /// * Minimum value: `32'd1`
-    /// * Maximum value: `32'd63`
-    /// The maximum value depends on the internal register width
-    parameter int unsigned SetAssociativity = 32'd0,
-    /// Number of cache lines per way.
-    ///
-    /// Restrictions:
-    /// * Minimum value: `32'd2`
-    /// * Has to be a power of two.
-    ///
-    /// Note on restrictions:
-    /// The reason is that in the address, at least one bit has to be mapped onto a cache-line index.
-    /// This is a limitation of the *system verilog* language, which requires at least one bit wide
-    /// fields inside of a struct. Further this value has to be a power of 2. This has to do with the
-    /// requirement that the address mapping from the address onto the cache-line index has to be
-    /// continuous.
-    parameter int unsigned NumLines         = 32'd0,
-    /// Number of blocks (words) in a cache line.
-    ///
-    /// The width of a block is the same as the data width of the AXI4+ATOP ports. Defined with
-    /// parameter `AxiCfg.DataWidthFull` in bits.
-    ///
-    /// Restrictions:
-    /// * Minimum value: 32'd2
-    /// * Has to be a power of two.
-    ///
-    /// Note on restrictions:
-    /// The same restriction as of parameter `NumLines` applies.
-    parameter int unsigned NumBlocks        = 32'd0,
+    parameter int unsigned TagCacheMemBase = 0,
+    /// Maximum concurrent AXI transactions on both ports
+    parameter int unsigned MaxTrans        = 10,
     /// AXI4+ATOP ID field width of the slave port.
     /// The ID field width of the master port is this parameter + 1.
-    parameter int unsigned AxiIdWidth       = 32'd6,
+    parameter int unsigned AxiIdWidth      = 32'd6,
     /// AXI4+ATOP address field width of both the slave and master port.
-    parameter int unsigned AxiAddrWidth     = 32'd64,
+    parameter int unsigned AxiAddrWidth    = 32'd64,
     /// AXI4+ATOP data field width of both the slave and the master port.
-    parameter int unsigned AxiDataWidth     = 32'd64,
+    parameter int unsigned AxiDataWidth    = 32'd64,
     /// AXI4+ATOP user field width of both the slave and the master port.
-    parameter int unsigned AxiUserWidth     = 32'd1,
-    /// Register type for HW -> Register direction
-    parameter type         conf_regs_d_t    = logic,
-    /// Register type for Register -> HW direction
-    parameter type         conf_regs_q_t    = logic,
+    parameter int unsigned AxiUserWidth    = 32'd1,
     /// AXI4+ATOP request type on the slave port.
     /// Expected format can be defined using `AXI_TYPEDEF_REQ_T.
-    parameter type         slv_req_t        = logic,
+    parameter type         slv_req_t       = logic,
     /// AXI4+ATOP response type on the slave port.
     /// Expected format can be defined using `AXI_TYPEDEF_RESP_T.
-    parameter type         slv_resp_t       = logic,
+    parameter type         slv_resp_t      = logic,
     /// AXI4+ATOP request type on the master port.
     /// Expected format can be defined using `AXI_TYPEDEF_REQ_T.
-    parameter type         mst_req_t        = logic,
+    parameter type         mst_req_t       = logic,
     /// AXI4+ATOP response type on the master port.
     /// Expected format can be defined using `AXI_TYPEDEF_RESP_T.
-    parameter type         mst_resp_t       = logic,
-    /// Full AXI4+ATOP Port address decoding rule
-    parameter type         rule_full_t      = axi_pkg::xbar_rule_64_t,
+    parameter type         mst_resp_t      = logic,
     /// Dependent parameter, do **not** overwrite!
     /// Address type of the AXI4+ATOP ports.
     /// The address fields of the rule type have to be the same.
-    parameter type         axi_addr_t       = logic                   [    AxiAddrWidth-1:0],
-    /// Dependent parameter, do **not** overwrite!
-    /// Data type of set associativity wide registers
-    parameter type         way_ind_t        = logic                   [SetAssociativity-1:0]
+    parameter type         axi_addr_t      = logic [AxiAddrWidth-1:0]
 ) (
     /// Rising-edge clock of all ports.
     input logic clk_i,
@@ -99,23 +58,14 @@ module axi_tagctrl_top #(
     /// AXI4+ATOP master port request, memory side
     output mst_req_t mst_req_o,
     /// AXI4+ATOP master port response, memory side
-    input mst_resp_t mst_resp_i,
-    /// Configuration registers HW -> Registers
-    output conf_regs_d_t conf_regs_o,
-    /// Start of address region mapped to cache
-    input axi_addr_t cached_start_addr_i,
-    /// End of address region mapped to cache
-    input axi_addr_t cached_end_addr_i
+    input mst_resp_t mst_resp_i
 );
   `include "axi/typedef.svh"
-  // Axi parameters are accumulated in a struct for further use.
-  localparam axi_llc_pkg::llc_axi_cfg_t AxiCfg = axi_llc_pkg::llc_axi_cfg_t
-'{SlvPortIdWidth: AxiIdWidth, AddrWidthFull: AxiAddrWidth, DataWidthFull: AxiDataWidth};
 
-  typedef logic [AxiCfg.SlvPortIdWidth-1:0] axi_slv_id_t;
-  typedef logic [AxiCfg.SlvPortIdWidth:0] axi_mst_id_t;
-  typedef logic [AxiCfg.DataWidthFull-1:0] axi_data_t;
-  typedef logic [(AxiCfg.DataWidthFull/8)-1:0] axi_strb_t;
+  typedef logic [AxiIdWidth-1:0] axi_slv_id_t;
+  typedef logic [AxiIdWidth:0] axi_mst_id_t;
+  typedef logic [AxiDataWidth-1:0] axi_data_t;
+  typedef logic [(AxiDataWidth/8)-1:0] axi_strb_t;
   typedef logic [AxiUserWidth-1:0] axi_user_t;
 
   `AXI_TYPEDEF_AW_CHAN_T(slv_aw_chan_t, axi_addr_t, axi_slv_id_t, axi_user_t)
@@ -128,28 +78,6 @@ module axi_tagctrl_top #(
   `AXI_TYPEDEF_R_CHAN_T(slv_r_chan_t, axi_data_t, axi_slv_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(mst_r_chan_t, axi_data_t, axi_mst_id_t, axi_user_t)
 
-  // configuration struct that has all the cache parameters included for the submodules
-  localparam axi_llc_pkg::llc_cfg_t LLC_Cfg = axi_llc_pkg::llc_cfg_t
-'{
-
-      SetAssociativity  : SetAssociativity,
-      NumLines          : NumLines,
-      NumBlocks         : NumBlocks,
-      BlockSize         : AxiCfg.DataWidthFull,
-      TagLength         :
-      AxiCfg.AddrWidthFull
-      - unsigned'(
-      $clog2(NumLines)
-      ) - unsigned'(
-      $clog2(NumBlocks)
-      ) - unsigned'(
-      $clog2(AxiCfg.DataWidthFull / 32'd8)
-      ),
-      IndexLength       : unsigned'($clog2(NumLines)),
-      BlockOffsetLength : unsigned'($clog2(NumBlocks)),
-      ByteOffsetLength  : unsigned'($clog2(AxiCfg.DataWidthFull / 32'd8)),
-      SPMLength         : SetAssociativity * NumLines * NumBlocks * (AxiCfg.DataWidthFull / 32'd8)
-  };
   localparam axi_tagctrl_pkg::tagctrl_cfg_t Cfg = axi_tagctrl_pkg::tagctrl_cfg_t
 '{
       AxiIdWidth: AxiIdWidth,
@@ -161,8 +89,7 @@ module axi_tagctrl_top #(
       TagCacheMemBase: TagCacheMemBase,
       TagWFifoDepth: 4,
       TagAXFifoDepth: 4,
-      TagRFifoDepth: 32,
-      tagc_cfg: LLC_Cfg
+      TagRFifoDepth: 32
   };
 
   typedef struct packed {
@@ -177,45 +104,7 @@ module axi_tagctrl_top #(
     axi_pkg::prot_t a_x_prot;  // AXI protection signal
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     logic x_last;  // Last descriptor of a burst
-    // Cache specific descriptor signals
-    logic spm;  // this descriptor targets a SPM region in the cache
-    logic rw;  // this descriptor is a read:0 or write:1 access
-    logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way we have to perform an operation on
-    logic evict;  // evict what is standing in the line
-    logic [Cfg.tagc_cfg.TagLength -1:0] evict_tag;  // tag for evicting a line
-    logic refill;  // refill the cache line
-    logic flush;  // flush this line, comes from config
   } tagc_desc_t;
-
-  // definition of the structs that are between the units and the ways
-  typedef struct packed {
-    axi_llc_pkg::cache_unit_e                  cache_unit;  // which unit does the access
-    logic [Cfg.tagc_cfg.SetAssociativity -1:0] way_ind;     // to which way the access goes
-    logic [Cfg.tagc_cfg.IndexLength      -1:0] line_addr;   // cache line address
-    logic [Cfg.tagc_cfg.BlockOffsetLength-1:0] blk_offset;  // block offset
-    logic                                      we;          // write enable
-    axi_data_t                                 data;        // input data
-    axi_strb_t                                 strb;        // write enable (equals AXI strb)
-    axi_data_t                                 bit_en;      // write enable (equals AXI strb)
-  } way_inp_t;
-
-  typedef struct packed {
-    axi_llc_pkg::cache_unit_e cache_unit;  // which unit had the access
-    axi_data_t                data;        // read data from the way
-  } way_oup_t;
-
-  // definitions of the miss counting struct
-  typedef struct packed {
-    axi_slv_id_t id;     // AXI id of the count operation
-    logic        rw;     // 0:read, 1:write
-    logic        valid;  // valid, equals enable
-  } cnt_t;
-
-  // definition of the lock signals
-  typedef struct packed {
-    logic [Cfg.tagc_cfg.IndexLength-1:0]      index;    // index of lock (cache-line)
-    logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way which is locked
-  } lock_t;
 
   // struct to pass between the tag controller and the tag cache
   typedef struct packed {
@@ -240,14 +129,6 @@ module axi_tagctrl_top #(
     axi_pkg::burst_t a_x_burst;  // AXI burst type
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     logic x_last;  // Last descriptor of a burst
-    // Cache specific descriptor signals
-    logic spm;  // this descriptor targets a SPM region in the cache
-    logic rw;  // this descriptor is a read:0 or write:1 access
-    logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way we have to perform an operation on
-    logic evict;  // evict what is standing in the line
-    logic [Cfg.tagc_cfg.TagLength -1:0] evict_tag;  // tag for evicting a line
-    logic refill;  // refill the cache line
-    logic flush;  // flush this line, comes from config
   } tagctrl_desc_t;
 
   // R tag bits payload between the tag cache and tag controller
@@ -287,9 +168,6 @@ module axi_tagctrl_top #(
 
   // backing tag memory accesses
   tag_lookup_engine #(
-  `ifndef PULP_LLC
-  `else
-  `endif
     .tag_req_t(tagc_desc_t),
     .tag_data_req_t(tagc_oup_t),
     .tag_write_resp_t(slv_b_chan_t),
@@ -301,9 +179,6 @@ module axi_tagctrl_top #(
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t)
-    `ifdef PULP_LLC
-    , .tagc_desc_t(tagc_desc_t)
-    `endif
     // .GROUPING_FACTOR = 256
     // .TAGGED_CHUNK_SIZE = 16
     // .COVERED_ALIGN = 4096
@@ -311,8 +186,6 @@ module axi_tagctrl_top #(
   ) i_tag_lookup_engine (
     .clk_i,
     .rst_ni,
-    .cached_start_addr_i,
-    .cached_end_addr_i,
     // tag store configuration
     .covered_base_addr_i(DRAMMemBase),
     .covered_top_addr_i(DRAMMemBase+DRAMMemLength),
@@ -348,7 +221,6 @@ module axi_tagctrl_top #(
 
   axi_tagctrl_ax #(
       .Cfg           (Cfg),
-      .Write         (1'b0),            // connected to the AR channel
       .tagctrl_desc_t(tagctrl_desc_t),
       .tagc_desc_t   (tagc_desc_t),
       .ax_chan_t     (slv_ar_chan_t)
@@ -416,7 +288,6 @@ module axi_tagctrl_top #(
 
   axi_tagctrl_ax #(
       .Cfg           (Cfg),
-      .Write         (1'b1),            // connected to the AW channel
       .tagctrl_desc_t(tagctrl_desc_t),
       .tagc_desc_t   (tagc_desc_t),
       .ax_chan_t     (slv_aw_chan_t)
@@ -527,7 +398,7 @@ module axi_tagctrl_top #(
       .mst_req_t    (mst_req_t),
       .mst_resp_t   (mst_resp_t),
       .NoSlvPorts   (32'd2),
-      .MaxWTrans    (axi_llc_pkg::MaxTrans),
+      .MaxWTrans    (MaxTrans),
       .FallThrough  (1'b0),                   // No registers
       .SpillAw      (1'b0),                   // No registers
       .SpillW       (1'b0),                   // No registers
@@ -549,7 +420,7 @@ module axi_tagctrl_top #(
   // Isolation module before demux to easy flushing,
   // AXI requests get stalled while flush is active
   axi_isolate #(
-      .NumPending (axi_llc_pkg::MaxTrans),
+      .NumPending (MaxTrans),
       .req_t      (slv_req_t),
       .resp_t     (slv_resp_t)
   ) i_axi_isolate_flush (
@@ -603,23 +474,23 @@ module axi_tagctrl_top #(
 
     // check the structs against the Cfg
     slv_aw_id :
-    assert ($bits(slv_req_i.aw.id) == AxiCfg.SlvPortIdWidth)
-    else $fatal(1, $sformatf("llc> AXI Slave port, AW ID width not equal to AxiCfg"));
+    assert ($bits(slv_req_i.aw.id) == AxiIdWidth)
+    else $fatal(1, $sformatf("llc> AXI Slave port, AW ID width not equal to AxiIdWidth"));
     slv_aw_addr :
-    assert ($bits(slv_req_i.aw.addr) == AxiCfg.AddrWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Slave port, AW ADDR width not equal to AxiCfg"));
+    assert ($bits(slv_req_i.aw.addr) == AxiAddrWidth)
+    else $fatal(1, $sformatf("llc> AXI Slave port, AW ADDR width not equal to AxiAddrWidth"));
     slv_ar_id :
-    assert ($bits(slv_req_i.ar.id) == AxiCfg.SlvPortIdWidth)
-    else $fatal(1, $sformatf("llc> AXI Slave port, AW ID width not equal to AxiCfg"));
+    assert ($bits(slv_req_i.ar.id) == AxiIdWidth)
+    else $fatal(1, $sformatf("llc> AXI Slave port, AR ID width not equal to AxiIdWidth"));
     slv_ar_addr :
-    assert ($bits(slv_req_i.ar.addr) == AxiCfg.AddrWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Slave port, AW ADDR width not equal to AxiCfg"));
+    assert ($bits(slv_req_i.ar.addr) == AxiAddrWidth)
+    else $fatal(1, $sformatf("llc> AXI Slave port, AR ADDR width not equal to AxiAddrWidth"));
     slv_w_data :
-    assert ($bits(slv_req_i.w.data) == AxiCfg.DataWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Slave port, W DATA width not equal to AxiCfg"));
+    assert ($bits(slv_req_i.w.data) == AxiDataWidth)
+    else $fatal(1, $sformatf("llc> AXI Slave port, W DATA width not equal to AxiDataWidth"));
     slv_r_data :
-    assert ($bits(slv_resp_o.r.data) == AxiCfg.DataWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Slave port, R DATA width not equal to AxiCfg"));
+    assert ($bits(slv_resp_o.r.data) == AxiDataWidth)
+    else $fatal(1, $sformatf("llc> AXI Slave port, R DATA width not equal to AxiDataWidth"));
     // compare the types against the structs
     slv_req_aw :
     assert ($bits(slv_aw_chan_t) == $bits(slv_req_i.aw))
@@ -638,23 +509,23 @@ module axi_tagctrl_top #(
     else $fatal(1, $sformatf("llc> AXI Slave port, slv_r_chan_t and slv_resp_o.r not equal"));
     // check the structs against the Cfg
     mst_aw_id :
-    assert ($bits(mst_req_o.aw.id) == AxiCfg.SlvPortIdWidth + 1)
-    else $fatal(1, $sformatf("llc> AXI Master port, AW ID not equal to AxiCfg.SlvPortIdWidth + 1"));
+    assert ($bits(mst_req_o.aw.id) == AxiIdWidth + 1)
+    else $fatal(1, $sformatf("llc> AXI Master port, AW ID not equal to AxiIdWidth + 1"));
     mst_aw_addr :
-    assert ($bits(mst_req_o.aw.addr) == AxiCfg.AddrWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Master port, AW ADDR width not equal to AxiCfg"));
+    assert ($bits(mst_req_o.aw.addr) == AxiAddrWidth)
+    else $fatal(1, $sformatf("llc> AXI Master port, AW ADDR width not equal to AxiAddrWidth"));
     mst_ar_id :
-    assert ($bits(mst_req_o.ar.id) == AxiCfg.SlvPortIdWidth + 1)
-    else $fatal(1, $sformatf("llc> AXI Master port, AW ID not equal to AxiCfg.SlvPortIdWidth + 1"));
+    assert ($bits(mst_req_o.ar.id) == AxiIdWidth + 1)
+    else $fatal(1, $sformatf("llc> AXI Master port, AW ID not equal to AxiIdWidth + 1"));
     mst_ar_addr :
-    assert ($bits(mst_req_o.ar.addr) == AxiCfg.AddrWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Master port, AW ADDR width not equal to AxiCfg"));
+    assert ($bits(mst_req_o.ar.addr) == AxiAddrWidth)
+    else $fatal(1, $sformatf("llc> AXI Master port, AR ADDR width not equal to AxiAddrWidth"));
     mst_w_data :
-    assert ($bits(mst_req_o.w.data) == AxiCfg.DataWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Master port, W DATA width not equal to AxiCfg"));
+    assert ($bits(mst_req_o.w.data) == AxiDataWidth)
+    else $fatal(1, $sformatf("llc> AXI Master port, W DATA width not equal to AxiDataWidth"));
     mst_r_data :
-    assert ($bits(mst_resp_i.r.data) == AxiCfg.DataWidthFull)
-    else $fatal(1, $sformatf("llc> AXI Master port, R DATA width not equal to AxiCfg"));
+    assert ($bits(mst_resp_i.r.data) == AxiDataWidth)
+    else $fatal(1, $sformatf("llc> AXI Master port, R DATA width not equal to AxiDataWidth"));
     // compare the types against the structs
     mst_req_aw :
     assert ($bits(mst_aw_chan_t) == $bits(mst_req_o.aw))
