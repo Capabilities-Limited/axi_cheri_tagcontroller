@@ -44,8 +44,6 @@ module hpdcache_read_req_rsp_wrapper #(
 
     hpdcache_req_t req;
 
-    // make sure we are receiving a read request
-    assert(!desc.rw);
     // make sure we have a single flit transaction
     assert(desc.a_x_len == 0);
     //assert(desc.x_last == 1'b1); // TODO only check if there is a valid request
@@ -57,13 +55,7 @@ module hpdcache_read_req_rsp_wrapper #(
     //axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     //logic x_last;  // Last descriptor of a burst
     //// Cache specific descriptor signals
-    //logic spm;  // this descriptor targets a SPM region in the cache
-    //logic rw;  // this descriptor is a read:0 or write:1 access
     //logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way we have to perform an operation on
-    //logic evict;  // evict what is standing in the line
-    //logic [Cfg.tagc_cfg.TagLength -1:0] evict_tag;  // tag for evicting a line
-    //logic refill;  // refill the cache line
-    //logic flush;  // flush this line, comes from config
 
     // prepare hpdcache req
     req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
@@ -152,8 +144,6 @@ module hpdcache_write_req_rsp_wrapper #(
     localparam int lo = $clog2(HPDcacheCfg.reqDataBytes);
     logic [hi:0] sel = {write_req_i.a_x_addr[hi:lo], {lo{1'b0}}};
 
-    // make sure we are receiving a write request
-    //assert(desc.rw); // TODO only check if there is a valid request
     // make sure we have a single flit transaction
     assert(desc.a_x_len == 0);
     //assert(desc.x_last == 1'b1); // TODO only check if there is a valid request
@@ -165,13 +155,7 @@ module hpdcache_write_req_rsp_wrapper #(
     //axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     //logic x_last;  // Last descriptor of a burst
     //// Cache specific descriptor signals
-    //logic spm;  // this descriptor targets a SPM region in the cache
-    //logic rw;  // this descriptor is a read:0 or write:1 access
     //logic [Cfg.tagc_cfg.SetAssociativity-1:0] way_ind;  // way we have to perform an operation on
-    //logic evict;  // evict what is standing in the line
-    //logic [Cfg.tagc_cfg.TagLength -1:0] evict_tag;  // tag for evicting a line
-    //logic refill;  // refill the cache line
-    //logic flush;  // flush this line, comes from config
 
     // prepare hpdcache req
     req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
@@ -255,13 +239,6 @@ module hpdcache_wrapper #(
     output logic read_resp_valid_o[nReadPorts],
     input logic read_resp_ready_i[nReadPorts],
     output tag_read_resp_t read_resp_o[nReadPorts],
-
-    // ctrl interfaces //
-    /////////////////////
-    output logic isolate_o,
-    input logic isolated_i,
-    input axi_addr_t cached_start_addr_i,
-    input axi_addr_t cached_end_addr_i,
 
     // tag store master interfaces //
     /////////////////////////////////

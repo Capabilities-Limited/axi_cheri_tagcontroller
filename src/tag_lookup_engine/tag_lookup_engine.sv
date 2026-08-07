@@ -19,9 +19,6 @@ module tag_lookup_engine #(
   parameter type mem_req_t = logic,
   parameter type mem_resp_t = logic,
   parameter type axi_addr_t = logic [AxiAddrWidth-1:0],
-  `ifdef PULP_LLC
-  parameter type tagc_desc_t = logic,
-  `endif
   parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16,
   parameter int unsigned COVERED_ALIGN = 4096,
@@ -31,13 +28,6 @@ module tag_lookup_engine #(
   input logic clk_i,
   // Asynchronous reset, active low
   input logic rst_ni,
-
-  // cache cfg signals //
-  ///////////////////////
-  output logic isolate_o,
-  input logic isolated_i,
-  input axi_addr_t cached_start_addr_i,
-  input axi_addr_t cached_end_addr_i,
 
   // tag store signals //
   ///////////////////////
@@ -225,11 +215,7 @@ module tag_lookup_engine #(
   localparam int unsigned nRootReadPorts = 64'd2;
   localparam int unsigned nRootWritePorts = 64'd2;
   localparam hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_cfg = root_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts);
-  `ifndef PULP_LLC
   hpdcache_wrapper #(
-  `else
-  llc_cache_wrapper #(
-  `endif
     .tag_req_t(tag_req_t),
     .tag_data_req_t(tag_data_req_t),
     .tag_write_resp_t(tag_write_resp_t),
@@ -242,12 +228,8 @@ module tag_lookup_engine #(
     .AxiUserWidth(AxiUserWidth),
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
-    .axi_addr_t(axi_addr_t)
-    `ifdef PULP_LLC
-    , .tagc_desc_t(tagc_desc_t)
-    `else
-    , .HPDcacheUserCfg(root_hpdcache_cfg)
-    `endif
+    .axi_addr_t(axi_addr_t),
+    .HPDcacheUserCfg(root_hpdcache_cfg)
   ) i_root_tag_cache_wrapper (
     .clk_i,
     .rst_ni,
@@ -273,11 +255,6 @@ module tag_lookup_engine #(
     .write_resp_ready_i(root_write_resp_ready),
     .write_resp_o(root_write_resp),
 
-    .isolate_o,
-    .isolated_i,
-    .cached_start_addr_i,
-    .cached_end_addr_i,
-
     //// tag store memory interfaces //
     ///////////////////////////////////
     .mem_req_o(root_mem_req),
@@ -288,11 +265,7 @@ module tag_lookup_engine #(
   localparam int unsigned nLeafReadPorts = 64'd2;
   localparam int unsigned nLeafWritePorts = 64'd1;
   localparam hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_cfg = leaf_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts);
-  `ifndef PULP_LLC
   hpdcache_wrapper #(
-  `else
-  llc_cache_wrapper #(
-  `endif
     .tag_req_t(tag_req_t),
     .tag_data_req_t(tag_data_req_t),
     .tag_write_resp_t(tag_write_resp_t),
@@ -305,12 +278,8 @@ module tag_lookup_engine #(
     .AxiUserWidth(AxiUserWidth),
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
-    .axi_addr_t(axi_addr_t)
-    `ifdef PULP_LLC
-    , .tagc_desc_t(tagc_desc_t)
-    `else
-    , .HPDcacheUserCfg(leaf_hpdcache_cfg)
-    `endif
+    .axi_addr_t(axi_addr_t),
+    .HPDcacheUserCfg(leaf_hpdcache_cfg)
   ) i_leaf_tag_cache_wrapper (
     .clk_i,
     .rst_ni,
@@ -335,11 +304,6 @@ module tag_lookup_engine #(
     .write_resp_valid_o('{leaf_write_resp_valid}),
     .write_resp_ready_i('{leaf_write_resp_ready}),
     .write_resp_o('{leaf_write_resp}),
-
-    .isolate_o,
-    .isolated_i,
-    .cached_start_addr_i,
-    .cached_end_addr_i,
 
     //// tag store memory interfaces //
     ///////////////////////////////////
