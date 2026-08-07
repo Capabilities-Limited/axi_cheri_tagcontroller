@@ -79,14 +79,6 @@ module tag_lookup_engine_table_lookups_write #(
     ret.a_x_prot = '0;
     ret.x_resp = '0;
     ret.x_last = 1'b1;
-    // Cache specific descriptor signals
-    ret.spm = '0;
-    ret.rw = '0; // read
-    ret.way_ind = '0;
-    ret.evict = '0;
-    ret.evict_tag = '0;
-    ret.refill = '0;
-    ret.flush = '0;
     return ret;
   endfunction
 

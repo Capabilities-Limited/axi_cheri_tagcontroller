@@ -69,9 +69,6 @@ module tag_ctrl_testharness #(
   localparam int unsigned AxiAddrWidth = 64'd64;
   localparam int unsigned AxiDataWidth = 64'd64;
   localparam int unsigned AxiUserWidth = 64'd1;
-  localparam int unsigned SetAssociativity = 32'd8;
-  localparam int unsigned NumLines = 32'd128;
-  localparam int unsigned NumBlocks = 32'd4;
   /*verilator public_off*/
   /////////////////////////////
   // Axi channel definitions //
@@ -200,14 +197,11 @@ module tag_ctrl_testharness #(
   ////////////////////////////
   // AXI Tag Controller DUT //
   ////////////////////////////
-  axi_tagctrl_reg_wrap #(
+  axi_tagctrl_top #(
       .DRAMMemBase     (DRAMMemBase),
       .DRAMMemLength   (DRAMMemLength),
       .CapSize         (CapSize),
       .TagCacheMemBase (TagCacheMemBase),
-      .SetAssociativity(SetAssociativity),
-      .NumLines        (NumLines),
-      .NumBlocks       (NumBlocks),
       .AxiIdWidth      (AxiIdWidth),
       .AxiAddrWidth    (AxiAddrWidth),
       .AxiDataWidth    (AxiDataWidth),
@@ -216,11 +210,8 @@ module tag_ctrl_testharness #(
       .slv_resp_t      (axi_slv_resp_t),
       .mst_req_t       (axi_mst_req_t),
       .mst_resp_t      (axi_mst_resp_t),
-      .reg_req_t       (conf_req_t),
-      .reg_resp_t      (conf_rsp_t),
-      .rule_full_t     (rule_full_t),
-      .PrintSramCfg    (1'b0)
-  ) i_axi_tagctrl_reg_wrap_raw (
+      .rule_full_t     (rule_full_t)
+  ) i_axi_tagctrl_top (
       .clk_i,
       .rst_ni,
       .test_i             (1'b0),
@@ -228,8 +219,6 @@ module tag_ctrl_testharness #(
       .slv_resp_o         (axi_cpu_res),
       .mst_req_o          (axi_mem_req),
       .mst_resp_i         (axi_mem_res),
-      .conf_req_i         (  /* not used */),
-      .conf_resp_o        (  /* not used */),
       .cached_start_addr_i(CachedRegionStart),
       .cached_end_addr_i  (CachedRegionLength)
   );

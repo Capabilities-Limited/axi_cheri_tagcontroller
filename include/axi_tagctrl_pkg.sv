@@ -16,7 +16,6 @@ package axi_tagctrl_pkg;
   parameter logic [3:0] AxReqId = 4'b1011;
 
   /// Tag Controller configuration struct.
-  /// Automatically set in (module.axi_llc_top).
   typedef struct packed {
     /// AXI4+ATOP ID width of the slave port from CPU side
     int unsigned AxiIdWidth;
@@ -39,8 +38,6 @@ package axi_tagctrl_pkg;
     int unsigned TagAXFifoDepth;
     /// Tag controller read FIFO from memory depth
     int unsigned TagRFifoDepth;
-    /// Tag Cache config structure
-    axi_llc_pkg::llc_cfg_t tagc_cfg;
   } tagctrl_cfg_t;
 
 endpackage
