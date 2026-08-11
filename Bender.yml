@@ -21,8 +21,8 @@ sources:
   # levels 1 and 0, etc. Files within a level are ordered alphabetically.
   # Level 0
   - src/axi_tagctrl_pkg.sv
+  - src/axi_tagctrl_config.sv
   - src/tag_lookup_engine/tag_lookup_engine.sv
-  - src/tag_lookup_engine/tag_lookup_engine_config.sv
   - src/tag_lookup_engine/tag_lookup_engine_root_init.sv
   - src/tag_lookup_engine/tag_lookup_engine_hpdcache_configs.sv
   - src/tag_lookup_engine/tag_lookup_engine_hpdcache_wrapper.sv
@@ -32,7 +32,6 @@ sources:
   - src/axi_tagc_read_unit.sv
   - src/axi_tagc_write_unit.sv
   - src/axi_tagctrl_ax.sv
-  - src/axi_tagctrl_config.sv
   - src/axi_tagctrl_r.sv
   - src/axi_tagctrl_w.sv
   # Level 2

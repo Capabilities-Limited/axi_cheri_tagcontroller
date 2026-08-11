@@ -8,15 +8,26 @@
 /// [TODO] - Description goes here
 
 module axi_tagctrl_top #(
-    /// DRAM memory Base
-    parameter int unsigned DRAMMemBase     = 64'd0,
-    /// DRAM memory Length
-    parameter int unsigned DRAMMemLength   = 64'd0,
+    parameter int unsigned GROUPING_FACTOR = 256,
+    parameter int unsigned TAGGED_CHUNK_SIZE = 16,
+    parameter int unsigned COVERED_ALIGN = 4096,
+    parameter int unsigned TAG_STORE_ALIGN = 64,
+    /// covered region base address on initialisation
+    parameter int unsigned init_covered_base = 64'd0,
+    /// covered region top address on initialisation
+    parameter int unsigned init_covered_top = 64'd0,
+    /// tag store base address on initialisation
+    parameter int unsigned init_tag_table_base = 64'd0,
+    /// start on reset (initial zeroing)
+    parameter logic init_start = 1'b0,
+    /// locked on reset (prevent dynamic configuration)
+    parameter logic init_locked = 1'b1,
+    /// allow resume without zeroing backing store
+    parameter logic allow_resume = 1'b0,
+    /// allow flush when locked
+    parameter logic allow_flush_when_locked = 1'b0,
     /// Capability size in memory
     parameter int unsigned CapSize         = 128,
-    /// Tag Cache base address in memory. Location of the Tag Cache
-    /// structure
-    parameter int unsigned TagCacheMemBase = 0,
     /// Maximum concurrent AXI transactions on both ports
     parameter int unsigned MaxTrans        = 10,
     /// AXI4+ATOP ID field width of the slave port.
@@ -51,6 +62,10 @@ module axi_tagctrl_top #(
     input logic rst_ni,
     /// Test mode activate, active high.
     input logic test_i,
+    /// AXI4 slave port conf. request
+    input slv_req_t cfg_slv_req_i,
+    /// AXI4 slave port conf. response
+    output slv_resp_t cfg_slv_resp_o,
     /// AXI4+ATOP slave port request, CPU side
     input slv_req_t slv_req_i,
     /// AXI4+ATOP slave port response, CPU side
@@ -84,9 +99,9 @@ module axi_tagctrl_top #(
       AxiAddrWidth: AxiAddrWidth,
       AxiDataWidth: AxiDataWidth,
       CapSize: CapSize,
-      DRAMMemBase: DRAMMemBase,
-      DRAMMemLength : DRAMMemLength,
-      TagCacheMemBase: TagCacheMemBase,
+      DRAMMemBase: init_covered_base,
+      DRAMMemLength : init_covered_top - init_covered_base,
+      TagCacheMemBase: init_tag_table_base,
       TagWFifoDepth: 4,
       TagAXFifoDepth: 4,
       TagRFifoDepth: 32
@@ -166,6 +181,44 @@ module axi_tagctrl_top #(
   tagc_desc_t tagctrl_w_desc;
   logic tagctrl_w_valid, tagctrl_w_ready;
 
+  axi_addr_t covered_base_addr, covered_top_addr;
+  axi_addr_t tag_store_base_addr, tag_store_top_addr;
+  axi_addr_t root_table_base_addr, root_table_top_addr;
+  axi_addr_t leaf_table_base_addr, leaf_table_top_addr;
+  // configuration module
+  axi_tagctrl_config #(
+    .GROUPING_FACTOR(GROUPING_FACTOR),
+    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE),
+    .COVERED_ALIGN(COVERED_ALIGN),
+    .TAG_STORE_ALIGN(TAG_STORE_ALIGN),
+    .slv_req_t(slv_req_t),
+    .slv_resp_t(slv_resp_t),
+    .axi_addr_t(axi_addr_t),
+    .init_covered_base(init_covered_base),
+    .init_covered_top(init_covered_top),
+    .init_tag_table_base(init_tag_table_base),
+    .init_start(init_start),
+    .init_locked(init_locked),
+    .allow_resume(allow_resume),
+    .allow_flush_when_locked(allow_flush_when_locked)
+  ) i_axi_tagctrl_config (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+
+    .slv_req_i(cfg_slv_req_i),
+    .slv_resp_o(cfg_slv_resp_o),
+
+    .covered_base_addr_o(covered_base_addr),
+    .covered_top_addr_o(covered_top_addr),
+    .tag_store_base_addr_o(tag_store_base_addr),
+    .tag_store_top_addr_o(tag_store_top_addr),
+    .root_table_base_addr_o(root_table_base_addr),
+    .root_table_top_addr_o(root_table_top_addr),
+    .leaf_table_base_addr_o(leaf_table_base_addr),
+    .leaf_table_top_addr_o(leaf_table_top_addr),
+    .error_o(/*TODO*/)
+  );
+
   // backing tag memory accesses
   tag_lookup_engine #(
     .tag_req_t(tagc_desc_t),
@@ -178,18 +231,23 @@ module axi_tagctrl_top #(
     .AxiUserWidth(AxiUserWidth),
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
-    .axi_addr_t(axi_addr_t)
-    // .GROUPING_FACTOR = 256
-    // .TAGGED_CHUNK_SIZE = 16
-    // .COVERED_ALIGN = 4096
-    // .TAGGED_CHUNK_SIZE = 64
+    .axi_addr_t(axi_addr_t),
+    .GROUPING_FACTOR(GROUPING_FACTOR),
+    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE),
+    .COVERED_ALIGN(COVERED_ALIGN),
+    .TAG_STORE_ALIGN(TAG_STORE_ALIGN),
+    .init_start(init_start),
+    .init_locked(init_locked),
+    .allow_resume(allow_resume),
+    .allow_flush_when_locked(allow_flush_when_locked)
   ) i_tag_lookup_engine (
-    .clk_i,
-    .rst_ni,
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
     // tag store configuration
-    .covered_base_addr_i(DRAMMemBase),
-    .covered_top_addr_i(DRAMMemBase+DRAMMemLength),
-    .tag_store_base_addr_i(TagCacheMemBase),
+    .root_table_base_addr_i(root_table_base_addr),
+    .root_table_top_addr_i(root_table_top_addr),
+    .leaf_table_base_addr_i(leaf_table_base_addr),
+    .leaf_table_top_addr_i(leaf_table_top_addr),
     // incoming read tag request descriptor
     .read_req_valid_i(ax_desc_valid[0]),
     .read_req_ready_o(ax_desc_ready[0]),

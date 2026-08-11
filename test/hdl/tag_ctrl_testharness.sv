@@ -187,26 +187,33 @@ module tag_ctrl_testharness #(
   // AXI Tag Controller DUT //
   ////////////////////////////
   axi_tagctrl_top #(
-      .DRAMMemBase     (DRAMMemBase),
-      .DRAMMemLength   (DRAMMemLength),
-      .CapSize         (CapSize),
-      .TagCacheMemBase (TagCacheMemBase),
-      .AxiIdWidth      (AxiIdWidth),
-      .AxiAddrWidth    (AxiAddrWidth),
-      .AxiDataWidth    (AxiDataWidth),
-      .AxiUserWidth    (AxiUserWidth),
-      .slv_req_t       (axi_slv_req_t),
-      .slv_resp_t      (axi_slv_resp_t),
-      .mst_req_t       (axi_mst_req_t),
-      .mst_resp_t      (axi_mst_resp_t)
+      .init_covered_base       (DRAMMemBase),
+      .init_covered_top        (DRAMMemBase + DRAMMemLength),
+      .init_tag_table_base     (TagCacheMemBase),
+      .init_start              (1'b0),
+      .init_locked             (1'b1),
+      .allow_resume            (1'b0),
+      .allow_flush_when_locked (1'b0),
+      .CapSize                 (CapSize),
+      //.MaxTrans(10),
+      .AxiIdWidth              (AxiIdWidth),
+      .AxiAddrWidth            (AxiAddrWidth),
+      .AxiDataWidth            (AxiDataWidth),
+      .AxiUserWidth            (AxiUserWidth),
+      .slv_req_t               (axi_slv_req_t),
+      .slv_resp_t              (axi_slv_resp_t),
+      .mst_req_t               (axi_mst_req_t),
+      .mst_resp_t              (axi_mst_resp_t)
   ) i_axi_tagctrl_top (
       .clk_i,
       .rst_ni,
-      .test_i             (1'b0),
-      .slv_req_i          (axi_cpu_req),
-      .slv_resp_o         (axi_cpu_res),
-      .mst_req_o          (axi_mem_req),
-      .mst_resp_i         (axi_mem_res)
+      .test_i         (1'b0),
+      .cfg_slv_req_i  (/*TODO*/),
+      .cfg_slv_resp_o (/*TODO*/),
+      .slv_req_i      (axi_cpu_req),
+      .slv_resp_o     (axi_cpu_res),
+      .mst_req_o      (axi_mem_req),
+      .mst_resp_i     (axi_mem_res)
   );
 
   /*   AXI_BUS #(
