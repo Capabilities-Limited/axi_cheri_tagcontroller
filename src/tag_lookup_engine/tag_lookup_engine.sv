@@ -22,7 +22,11 @@ module tag_lookup_engine #(
   parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16,
   parameter int unsigned COVERED_ALIGN = 4096,
-  parameter int unsigned TAG_STORE_ALIGN = 64
+  parameter int unsigned TAG_STORE_ALIGN = 64,
+  parameter logic init_start = 1'b0,
+  parameter logic init_locked = 1'b1,
+  parameter logic allow_resume = 1'b0,
+  parameter logic allow_flush_when_locked = 1'b0
 ) (
   // Rising-edge clock of all ports.
   input logic clk_i,
@@ -31,9 +35,10 @@ module tag_lookup_engine #(
 
   // tag store signals //
   ///////////////////////
-  input axi_addr_t covered_base_addr_i,
-  input axi_addr_t covered_top_addr_i,
-  input axi_addr_t tag_store_base_addr_i,
+  input axi_addr_t root_table_base_addr_i,
+  input axi_addr_t root_table_top_addr_i,
+  input axi_addr_t leaf_table_base_addr_i,
+  input axi_addr_t leaf_table_top_addr_i,
 
   // tag controller slave interfaces //
   /////////////////////////////////////
@@ -91,31 +96,6 @@ module tag_lookup_engine #(
   `AXI_TYPEDEF_R_CHAN_T(mst_r_chan_t, axi_data_t, axi_mst_id_t, axi_user_t)
 
   //////////////////////////////////////////////////////////////////////////////
-  // tag lookup engine configuration module
-  //////////////////////////////////////////////////////////////////////////////
-
-  axi_addr_t root_table_base_addr, leaf_table_base_addr;
-  axi_addr_t root_table_top_addr, leaf_table_top_addr;
-
-  tag_lookup_engine_config #(
-    .addr_t(axi_addr_t),
-    .GROUPING_FACTOR(GROUPING_FACTOR),
-    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE),
-    .COVERED_ALIGN(COVERED_ALIGN),
-    .TAG_STORE_ALIGN(TAG_STORE_ALIGN)
-  ) i_tag_lookup_engine_config (
-    .covered_base_addr_i,
-    .covered_top_addr_i,
-    .tag_store_base_addr_i,
-    .leaf_table_base_addr_o(leaf_table_base_addr),
-    .leaf_table_top_addr_o(leaf_table_top_addr),
-    .root_table_base_addr_o(root_table_base_addr),
-    .root_table_top_addr_o(root_table_top_addr),
-    .tag_store_top_addr_o(/* TODO */),
-    .error_o(/* TODO */)
-  );
-
-  //////////////////////////////////////////////////////////////////////////////
   // local signals for per table-level accesses (root, leaf)
   //////////////////////////////////////////////////////////////////////////////
 
@@ -155,7 +135,7 @@ module tag_lookup_engine #(
   ) i_tag_lookup_engine_table_lookups (
     .clk_i,
     .rst_ni,
-    .root_table_size_i(root_table_top_addr-root_table_base_addr),
+    .root_table_size_i(root_table_top_addr_i-root_table_base_addr_i),
     // incoming requests interface
     .read_req_valid_i,
     .read_req_ready_o,
@@ -349,8 +329,8 @@ module tag_lookup_engine #(
     .clk_i,
     .rst_ni,
     .test_i(1'b0),
-    .slv_reqs_i ({table_offset_req(root_table_base_addr, root_mem_req),
-                  table_offset_req(leaf_table_base_addr, leaf_mem_req)}),
+    .slv_reqs_i ({table_offset_req(root_table_base_addr_i, root_mem_req),
+                  table_offset_req(leaf_table_base_addr_i, leaf_mem_req)}),
     .slv_resps_o({root_mem_resp, leaf_mem_resp}),
     .mst_req_o  (mem_req_o),
     .mst_resp_i (mem_resp_i)
