@@ -181,10 +181,21 @@ module axi_tagctrl_top #(
   tagc_desc_t tagctrl_w_desc;
   logic tagctrl_w_valid, tagctrl_w_ready;
 
+  // configuration signals
   axi_addr_t covered_base_addr, covered_top_addr;
   axi_addr_t tag_store_base_addr, tag_store_top_addr;
   axi_addr_t root_table_base_addr, root_table_top_addr;
   axi_addr_t leaf_table_base_addr, leaf_table_top_addr;
+
+  // orchestration signals
+  logic isolate;
+  logic isolated;
+  logic ignore_tags;
+  logic perform_zeroing;
+  logic done_zeroing;
+  logic perform_flushing;
+  logic done_flushing;
+
   // configuration module
   axi_tagctrl_config #(
     .GROUPING_FACTOR(GROUPING_FACTOR),
@@ -193,6 +204,11 @@ module axi_tagctrl_top #(
     .TAG_STORE_ALIGN(TAG_STORE_ALIGN),
     .slv_req_t(slv_req_t),
     .slv_resp_t(slv_resp_t),
+    .ar_chan_t (slv_ar_chan_t),
+    .r_chan_t (slv_r_chan_t),
+    .aw_chan_t (slv_aw_chan_t),
+    .w_chan_t (w_chan_t),
+    .b_chan_t (slv_b_chan_t),
     .axi_addr_t(axi_addr_t),
     .init_covered_base(init_covered_base),
     .init_covered_top(init_covered_top),
@@ -208,6 +224,16 @@ module axi_tagctrl_top #(
     .slv_req_i(cfg_slv_req_i),
     .slv_resp_o(cfg_slv_resp_o),
 
+    // signaling
+    .isolate_o(isolate),
+    .isolated_i(isolated),
+    .ignore_tags_o(ignore_tags),
+    .perform_zeroing_o(perform_zeroing),
+    .done_zeroing_i(done_zeroing),
+    .perform_flushing_o(perform_flushing),
+    .done_flushing_i(done_flushing),
+
+    // reporting
     .covered_base_addr_o(covered_base_addr),
     .covered_top_addr_o(covered_top_addr),
     .tag_store_base_addr_o(tag_store_base_addr),
@@ -232,14 +258,7 @@ module axi_tagctrl_top #(
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t),
-    .GROUPING_FACTOR(GROUPING_FACTOR),
-    .TAGGED_CHUNK_SIZE(TAGGED_CHUNK_SIZE),
-    .COVERED_ALIGN(COVERED_ALIGN),
-    .TAG_STORE_ALIGN(TAG_STORE_ALIGN),
-    .init_start(init_start),
-    .init_locked(init_locked),
-    .allow_resume(allow_resume),
-    .allow_flush_when_locked(allow_flush_when_locked)
+    .GROUPING_FACTOR(GROUPING_FACTOR)
   ) i_tag_lookup_engine (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
@@ -248,6 +267,12 @@ module axi_tagctrl_top #(
     .root_table_top_addr_i(root_table_top_addr),
     .leaf_table_base_addr_i(leaf_table_base_addr),
     .leaf_table_top_addr_i(leaf_table_top_addr),
+    // command and reporting signals
+    .ignore_tags_i(ignore_tags),
+    .perform_zeroing_i(perform_zeroing),
+    .done_zeroing_o(done_zeroing),
+    .perform_flushing_i(perform_flushing),
+    .done_flushing_o(done_flushing),
     // incoming read tag request descriptor
     .read_req_valid_i(ax_desc_valid[0]),
     .read_req_ready_o(ax_desc_ready[0]),
@@ -472,26 +497,9 @@ module axi_tagctrl_top #(
       .mst_req_o  (mst_req_o),
       .mst_resp_i (mst_resp_i)
   );
-  /*
+
   slv_req_t  slv_req_cut;
   slv_resp_t slv_resp_cut;
-  // Isolation module before demux to easy flushing,
-  // AXI requests get stalled while flush is active
-  axi_isolate #(
-      .NumPending (MaxTrans),
-      .req_t      (slv_req_t),
-      .resp_t     (slv_resp_t)
-  ) i_axi_isolate_flush (
-      .clk_i,
-      .rst_ni,
-      .slv_req_i (slv_req_cut),  // Slave port request
-      .slv_resp_o (slv_resp_cut), // Slave port response
-      .mst_req_o  ( to_tagctrl_req  ),
-      .mst_resp_i ( from_tagctrl_resp  ),
-      .isolate_i  ( tagctrl_isolate   ),
-      .isolated_o ( tagctrl_isolated  )
-  );
-  */
 
   axi_cut #(
       // AXI channel structs
@@ -507,10 +515,23 @@ module axi_tagctrl_top #(
       .rst_ni,
       .slv_req_i (slv_req_i),
       .slv_resp_o(slv_resp_o),
-      //.mst_req_o (slv_req_cut),
-      //.mst_resp_i(slv_resp_cut)
-      .mst_req_o (to_tagctrl_req),
-      .mst_resp_i(from_tagctrl_resp)
+      .mst_req_o (slv_req_cut),
+      .mst_resp_i(slv_resp_cut)
+  );
+
+  axi_isolate #(
+      .NumPending (MaxTrans),
+      .req_t      (slv_req_t),
+      .resp_t     (slv_resp_t)
+  ) i_axi_isolate_flush (
+      .clk_i,
+      .rst_ni,
+      .slv_req_i  (slv_req_cut),  // Slave port request
+      .slv_resp_o (slv_resp_cut), // Slave port response
+      .mst_req_o  (to_tagctrl_req),
+      .mst_resp_i (from_tagctrl_resp),
+      .isolate_i  (isolate),
+      .isolated_o (isolated)
   );
 
   // pragma translate_off

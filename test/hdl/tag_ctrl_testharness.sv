@@ -190,7 +190,7 @@ module tag_ctrl_testharness #(
       .init_covered_base       (DRAMMemBase),
       .init_covered_top        (DRAMMemBase + DRAMMemLength),
       .init_tag_table_base     (TagCacheMemBase),
-      .init_start              (1'b0),
+      .init_start              (1'b1),
       .init_locked             (1'b1),
       .allow_resume            (1'b0),
       .allow_flush_when_locked (1'b0),
