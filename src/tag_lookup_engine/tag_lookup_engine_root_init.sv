@@ -7,8 +7,8 @@ module tag_lookup_engine_root_init #(
 ) (
   input logic clk_i,
   input logic rst_ni,
-  input logic start_i,
   input axi_addr_t root_table_size_i,
+  input logic start_i,
   output logic ready_o,
   // write interface
   output logic            root_write_req_valid_o,

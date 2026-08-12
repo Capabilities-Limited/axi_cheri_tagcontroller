@@ -6,7 +6,6 @@ module tag_lookup_engine_table_lookups_write #(
   parameter type axi_addr_t = logic,
   parameter type axi_slv_id_t = logic,
   parameter int unsigned GROUPING_FACTOR = 256,
-  parameter int unsigned TAGGED_CHUNK_SIZE = 16,
   parameter int unsigned BITS_PER_ROOT_FLIT = 4,
   parameter int unsigned BITS_PER_LEAF_FLIT = 4,
   parameter int unsigned MAX_IN_FLIGHT = 4
