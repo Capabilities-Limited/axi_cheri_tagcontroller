@@ -24,6 +24,8 @@ module axi_tagctrl_r #(
     input logic clk_i,
     /// Asynchronous reset, active low.
     input logic rst_ni,
+    /// Tag bypassing mode
+    input logic ignore_tags_i,
     /// Input descriptor payload.
     input desc_t tagctrl_desc_i,
     /// Input descriptor is valid.
@@ -169,7 +171,12 @@ module axi_tagctrl_r #(
     tagc_inp_r_valid_d = 1'b0;
     load_tags_valid = 1'b1;
     // new descriptor at the input
-    if (tagc_inp_r_valid_i) begin
+    if (ignore_tags_i) begin
+      tagc_inp_r_d = '0;
+      load_tags = 1'b1;
+      tagc_inp_r_valid_d = 1'b1;
+      load_tags_valid = 1'b1;
+    end else if (tagc_inp_r_valid_i) begin
       tagc_inp_r_d = tagc_inp_r_i;
       load_tags = 1'b1;
       tagc_inp_r_valid_d = 1'b1;
