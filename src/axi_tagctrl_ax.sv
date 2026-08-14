@@ -81,6 +81,9 @@ module axi_tagctrl_ax #(
   assign ax_mem_chan_valid_o = slv_chan_valid_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
   assign tag_addr = $unsigned(ax_chan_slv_i.addr - Cfg.DRAMMemBase) >> $clog2(Cfg.CapSize / 8);
+  assign tagged_req = !ignore_tags_i
+                      && ax_chan_slv_i.addr >= Cfg.DRAMMemBase
+                      && ax_chan_slv_i.addr + (addr_t'(1) << ax_chan_slv_i.size) <= Cfg.DRAMMemBase + Cfg.DRAMMemLength;
 
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
@@ -116,7 +119,7 @@ module axi_tagctrl_ax #(
 
     if (tagc_desc_valid_q) begin
       // send new request transaction
-      if (ignore_tags_i || tagc_ready_i) begin
+      if (tagc_ready_i) begin
         tagc_desc_valid_d = 1'b0;
         load_tagc_desc_valid = 1'b1;
       end
@@ -139,7 +142,7 @@ module axi_tagctrl_ax #(
             default: '0
         };
         load_tagc_desc = 1'b1;
-        tagc_desc_valid_d = 1'b1;
+        tagc_desc_valid_d = tagged_req;
         load_tagc_desc_valid = 1'b1;
       end
     end
@@ -169,6 +172,7 @@ module axi_tagctrl_ax #(
             a_x_len: ax_chan_slv_i.len,
             a_x_size: ax_chan_slv_i.size,
             x_last: 1'b1,
+            tagged_req: tagged_req,
             default: '0
         };
         load_tagctrl_desc = 1'b1;
