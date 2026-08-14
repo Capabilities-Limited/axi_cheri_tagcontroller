@@ -25,13 +25,6 @@ package axi_tagctrl_pkg;
     int unsigned AxiDataWidth;
     /// Capability size in memory
     int unsigned CapSize;
-    /// DRAM memory Base
-    int unsigned DRAMMemBase;
-    /// DRAM memory Length
-    int unsigned DRAMMemLength;
-    /// Tag Cache base address in memory. Location of the Tag Cache
-    /// structure
-    int unsigned TagCacheMemBase;
     /// Tag controller write FIFO depth
     int unsigned TagWFifoDepth;
     /// Tag controller AX FIFO depth
