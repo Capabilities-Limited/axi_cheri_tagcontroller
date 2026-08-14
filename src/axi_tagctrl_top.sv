@@ -117,6 +117,7 @@ module axi_tagctrl_top #(
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     logic x_last;  // Last descriptor of a burst
     logic tagged_req;  // Request should interact with tags
+    logic illegal_req;  // Request tries to directly access tags
   } desc_t;
 
   // struct to pass between the tag controller and the tag cache
