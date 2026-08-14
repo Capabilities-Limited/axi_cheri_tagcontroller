@@ -12,12 +12,22 @@ module axi_tagctrl_ax #(
     /// AXI Tag Controller descriptor type definition,
     parameter type desc_t = logic,
     /// AXI master port Ax channel type definition.
-    parameter type ax_chan_t = logic
+    parameter type ax_chan_t = logic,
+    /// Type to hold AXI addresses
+    parameter type axi_addr_t = logic [63:0]
 ) (
     /// Clock, positive edge triggered.
     input logic clk_i,
     /// Asynchronous reset, active low.
     input logic rst_ni,
+    /// Start of region covered by tags
+    input axi_addr_t covered_base_addr_i,
+    /// End of region covered by tags
+    input axi_addr_t covered_top_addr_i,
+    /// Start of region storing tags
+    input axi_addr_t tag_store_base_addr_i,
+    /// End of region storing tags
+    input axi_addr_t tag_store_top_addr_i,
     /// AXI AX slave channel payload.
     input ax_chan_t ax_chan_slv_i,
     /// AXI AX slave channel is valid.
@@ -47,7 +57,6 @@ module axi_tagctrl_ax #(
   // local typedefs
   // master port ID is one bit wider than the slave port one, see `axi_mux`
   typedef logic [Cfg.AxiIdWidth:0] id_mst_t;
-  typedef logic [Cfg.AxiAddrWidth-1:0] addr_t;
 
   // Register to hold the descriptor for tag controller pipeline
   desc_t tagctrl_desc_d, tagctrl_desc_q;
@@ -66,9 +75,9 @@ module axi_tagctrl_ax #(
 
   // Auxiliary signals
   // Used to compute the end addr (addr begin + len)
-  addr_t addr_end;
+  axi_addr_t addr_end;
   // Tag address offset to fetch
-  addr_t tag_addr;
+  axi_addr_t tag_addr;
 
   // output assignments
   assign tagctrl_desc_o = tagctrl_desc_q;
@@ -78,7 +87,7 @@ module axi_tagctrl_ax #(
   assign ax_mem_chan_mst_o = slv_chan_q;
   assign ax_mem_chan_valid_o = slv_chan_valid_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
-  assign tag_addr = $unsigned(ax_chan_slv_i.addr - Cfg.DRAMMemBase) >> $clog2(Cfg.CapSize / 8);
+  assign tag_addr = $unsigned(ax_chan_slv_i.addr - covered_base_addr_i) >> $clog2(Cfg.CapSize / 8);
 
   always_comb begin : ax_mem_chan_ctrl
     // default assignments

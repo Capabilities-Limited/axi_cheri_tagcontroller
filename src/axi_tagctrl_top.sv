@@ -99,9 +99,6 @@ module axi_tagctrl_top #(
       AxiAddrWidth: AxiAddrWidth,
       AxiDataWidth: AxiDataWidth,
       CapSize: CapSize,
-      DRAMMemBase: init_covered_base,
-      DRAMMemLength : init_covered_top - init_covered_base,
-      TagCacheMemBase: init_tag_table_base,
       TagWFifoDepth: 4,
       TagAXFifoDepth: 4,
       TagRFifoDepth: 32
@@ -291,22 +288,27 @@ module axi_tagctrl_top #(
   axi_tagctrl_ax #(
       .Cfg       (Cfg),
       .desc_t    (desc_t),
-      .ax_chan_t (slv_ar_chan_t)
+      .ax_chan_t (slv_ar_chan_t),
+      .axi_addr_t(axi_addr_t)
   ) axi_tag_ctrl_ar (
       .clk_i,
       .rst_ni,
-      .ax_chan_slv_i      (to_tagctrl_req.ar),
-      .ax_chan_valid_i    (to_tagctrl_req.ar_valid),
-      .ax_chan_ready_o    (from_tagctrl_resp.ar_ready),
-      .tagc_desc_o        (ax_desc[0]),
-      .tagc_valid_o       (ax_desc_valid[0]),
-      .tagc_ready_i       (ax_desc_ready[0]),
-      .ax_mem_chan_mst_o  (tagctrl_req.ar),
-      .ax_mem_chan_valid_o(tagctrl_req.ar_valid),
-      .ax_mem_chan_ready_i(tagctrl_resp.ar_ready),
-      .tagctrl_desc_o     (tagctrl_ar_desc),
-      .tagctrl_valid_o    (tagctrl_ar_valid),
-      .tagctrl_ready_i    (tagctrl_ar_ready)
+      .covered_base_addr_i   (covered_base_addr),
+      .covered_top_addr_i    (covered_top_addr),
+      .tag_store_base_addr_i (tag_store_base_addr),
+      .tag_store_top_addr_i  (tag_store_top_addr),
+      .ax_chan_slv_i         (to_tagctrl_req.ar),
+      .ax_chan_valid_i       (to_tagctrl_req.ar_valid),
+      .ax_chan_ready_o       (from_tagctrl_resp.ar_ready),
+      .tagc_desc_o           (ax_desc[0]),
+      .tagc_valid_o          (ax_desc_valid[0]),
+      .tagc_ready_i          (ax_desc_ready[0]),
+      .ax_mem_chan_mst_o     (tagctrl_req.ar),
+      .ax_mem_chan_valid_o   (tagctrl_req.ar_valid),
+      .ax_mem_chan_ready_i   (tagctrl_resp.ar_ready),
+      .tagctrl_desc_o        (tagctrl_ar_desc),
+      .tagctrl_valid_o       (tagctrl_ar_valid),
+      .tagctrl_ready_i       (tagctrl_ar_ready)
   );
 
   // FIFO between AR master and R master, there can be DEPTH inflight transactions
@@ -355,24 +357,29 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg           (Cfg),
-      .desc_t        (desc_t),
-      .ax_chan_t     (slv_aw_chan_t)
+      .Cfg       (Cfg),
+      .desc_t    (desc_t),
+      .ax_chan_t (slv_aw_chan_t),
+      .axi_addr_t(axi_addr_t)
   ) axi_tag_ctrl_aw (
       .clk_i,
       .rst_ni,
-      .ax_chan_slv_i      (to_tagctrl_req.aw),
-      .ax_chan_valid_i    (to_tagctrl_req.aw_valid),
-      .ax_chan_ready_o    (from_tagctrl_resp.aw_ready),
-      .tagc_desc_o        (ax_desc[1]),
-      .tagc_valid_o       (ax_desc_valid[1]),
-      .tagc_ready_i       (ax_desc_ready[1]),
-      .ax_mem_chan_mst_o  (tagctrl_req.aw),
-      .ax_mem_chan_valid_o(tagctrl_req.aw_valid),
-      .ax_mem_chan_ready_i(tagctrl_resp.aw_ready),
-      .tagctrl_desc_o     (tagctrl_aw_desc),
-      .tagctrl_valid_o    (tagctrl_aw_valid),
-      .tagctrl_ready_i    (tagctrl_aw_ready)
+      .covered_base_addr_i   (covered_base_addr),
+      .covered_top_addr_i    (covered_top_addr),
+      .tag_store_base_addr_i (tag_store_base_addr),
+      .tag_store_top_addr_i  (tag_store_top_addr),
+      .ax_chan_slv_i         (to_tagctrl_req.aw),
+      .ax_chan_valid_i       (to_tagctrl_req.aw_valid),
+      .ax_chan_ready_o       (from_tagctrl_resp.aw_ready),
+      .tagc_desc_o           (ax_desc[1]),
+      .tagc_valid_o          (ax_desc_valid[1]),
+      .tagc_ready_i          (ax_desc_ready[1]),
+      .ax_mem_chan_mst_o     (tagctrl_req.aw),
+      .ax_mem_chan_valid_o   (tagctrl_req.aw_valid),
+      .ax_mem_chan_ready_i   (tagctrl_resp.aw_ready),
+      .tagctrl_desc_o        (tagctrl_aw_desc),
+      .tagctrl_valid_o       (tagctrl_aw_valid),
+      .tagctrl_ready_i       (tagctrl_aw_ready)
   );
 
   // FIFO between AW master and W master, there can be DEPTH inflight transactions
