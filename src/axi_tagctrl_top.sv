@@ -116,6 +116,7 @@ module axi_tagctrl_top #(
     axi_pkg::burst_t a_x_burst;  // AXI burst type
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     logic x_last;  // Last descriptor of a burst
+    logic tagged_req;  // Request should interact with tags
   } desc_t;
 
   // struct to pass between the tag controller and the tag cache
@@ -259,24 +260,24 @@ module axi_tagctrl_top #(
     .perform_flushing_i(perform_flushing),
     .done_flushing_o(done_flushing),
     // incoming read tag request descriptor
-    .read_req_valid_i(ax_desc_valid[0] & !ignore_tags),
+    .read_req_valid_i(ax_desc_valid[0]),
     .read_req_ready_o(ax_desc_ready[0]),
     .read_req_i(ax_desc[0]),
     // outgoing read response
     .read_resp_valid_o(tagc_r_inp_valid),
-    .read_resp_ready_i(tagc_r_inp_ready | ignore_tags),
+    .read_resp_ready_i(tagc_r_inp_ready),
     .read_resp_o(tagc_r_inp),
     // incoming write tag request descriptor
-    .write_req_valid_i(ax_desc_valid[1] & !ignore_tags),
+    .write_req_valid_i(ax_desc_valid[1]),
     .write_req_ready_o(ax_desc_ready[1]),
     .write_req_i(ax_desc[1]),
     // incoming write data
-    .write_data_req_valid_i(tagc_w_oup_valid & !ignore_tags),
+    .write_data_req_valid_i(tagc_w_oup_valid),
     .write_data_req_ready_o(tagc_w_oup_ready),
     .write_data_req_i(tagc_w_oup),
     // outgoing write response
     .write_resp_valid_o(tagc_b_chan_valid),
-    .write_resp_ready_i(tagc_b_chan_ready | ignore_tags),
+    .write_resp_ready_i(tagc_b_chan_ready),
     .write_resp_o(tagc_b_chan),
     // tag store memory interfaces
     .mem_req_o(tagc_req),
@@ -336,7 +337,6 @@ module axi_tagctrl_top #(
   ) i_axi_tag_ctrl_r (
       .clk_i,
       .rst_ni,
-      .ignore_tags_i       (ignore_tags),
       .tagctrl_desc_i      (tagctrl_r_desc),
       .tagctrl_desc_valid_i(tagctrl_r_valid),
       .tagctrl_desc_ready_o(tagctrl_r_ready),
@@ -425,7 +425,6 @@ module axi_tagctrl_top #(
       .clk_i,
       .rst_ni,
       .test_i,
-      .ignore_tags_i       (ignore_tags),
       .tagctrl_desc_i      (tagctrl_w_desc),
       .tagctrl_desc_valid_i(tagctrl_w_valid),
       .tagctrl_desc_ready_o(tagctrl_w_ready),
