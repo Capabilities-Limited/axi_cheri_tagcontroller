@@ -14,7 +14,7 @@ module axi_tagctrl_r #(
     /// [`axi_tagctrl_top`](module.axi_tagctrl_top).
     parameter axi_tagctrl_pkg::tagctrl_cfg_t Cfg = axi_tagctrl_pkg::tagctrl_cfg_t'{default: '0},
     /// Tag Controller descriptor type definition.
-    parameter type tagctrl_desc_t = logic,
+    parameter type desc_t = logic,
     /// Tag Cache R payload type definition.
     parameter type tagc_inp_t = logic,
     /// AXI slave port R channel struct definition.
@@ -25,7 +25,7 @@ module axi_tagctrl_r #(
     /// Asynchronous reset, active low.
     input logic rst_ni,
     /// Input descriptor payload.
-    input tagctrl_desc_t tagctrl_desc_i,
+    input desc_t tagctrl_desc_i,
     /// Input descriptor is valid.
     input logic tagctrl_desc_valid_i,
     /// Unit is ready to accept a new descriptor.
@@ -50,7 +50,7 @@ module axi_tagctrl_r #(
     input logic r_chan_slv_ready_i
 );
   // Registers
-  tagctrl_desc_t tagctrl_desc_d, tagctrl_desc_q;
+  desc_t tagctrl_desc_d, tagctrl_desc_q;
   logic load_desc;
   enum logic [1:0] {
     IDLE,
