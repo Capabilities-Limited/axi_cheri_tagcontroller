@@ -18,6 +18,8 @@ module axi_tagctrl_ax #(
     input logic clk_i,
     /// Asynchronous reset, active low.
     input logic rst_ni,
+    /// Tag bypassing mode
+    input logic ignore_tags_i,
     /// AXI AX slave channel payload.
     input ax_chan_t ax_chan_slv_i,
     /// AXI AX slave channel is valid.
@@ -114,7 +116,7 @@ module axi_tagctrl_ax #(
 
     if (tagc_desc_valid_q) begin
       // send new request transaction
-      if (tagc_ready_i) begin
+      if (ignore_tags_i || tagc_ready_i) begin
         tagc_desc_valid_d = 1'b0;
         load_tagc_desc_valid = 1'b1;
       end
