@@ -12,11 +12,10 @@ package axi_tagctrl_pkg;
   /// Version parameter, can be read out from configuration port.
   ///
   /// This is ASCII encoded after the semantic versioning: `vAA.BB.C`
-  parameter logic [63:0] AxiTagCtrlVersion = 64'h7630_302E_3032_2E31;
+  parameter logic [63:0] AxiTagCtrlVersion = 64'h7630_302E_3030_2E31;
   parameter logic [3:0] AxReqId = 4'b1011;
 
   /// Tag Controller configuration struct.
-  /// Automatically set in (module.axi_llc_top).
   typedef struct packed {
     /// AXI4+ATOP ID width of the slave port from CPU side
     int unsigned AxiIdWidth;
