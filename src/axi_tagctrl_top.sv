@@ -113,6 +113,7 @@ module axi_tagctrl_top #(
     axi_pkg::burst_t a_x_burst;  // AXI burst type
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     logic x_last;  // Last descriptor of a burst
+    logic tagged_req;  // Request should interact with tags
   } desc_t;
 
   // struct to pass between the tag controller and the tag cache
@@ -251,7 +252,6 @@ module axi_tagctrl_top #(
     .leaf_table_base_addr_i(leaf_table_base_addr),
     .leaf_table_top_addr_i(leaf_table_top_addr),
     // command and reporting signals
-    .ignore_tags_i(ignore_tags),
     .perform_zeroing_i(perform_zeroing),
     .done_zeroing_o(done_zeroing),
     .perform_flushing_i(perform_flushing),
@@ -293,6 +293,7 @@ module axi_tagctrl_top #(
   ) axi_tag_ctrl_ar (
       .clk_i,
       .rst_ni,
+      .ignore_tags_i         (ignore_tags),
       .covered_base_addr_i   (covered_base_addr),
       .covered_top_addr_i    (covered_top_addr),
       .tag_store_base_addr_i (tag_store_base_addr),
@@ -364,6 +365,7 @@ module axi_tagctrl_top #(
   ) axi_tag_ctrl_aw (
       .clk_i,
       .rst_ni,
+      .ignore_tags_i         (ignore_tags),
       .covered_base_addr_i   (covered_base_addr),
       .covered_top_addr_i    (covered_top_addr),
       .tag_store_base_addr_i (tag_store_base_addr),

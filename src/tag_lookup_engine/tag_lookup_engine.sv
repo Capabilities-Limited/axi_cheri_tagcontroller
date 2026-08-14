@@ -35,7 +35,6 @@ module tag_lookup_engine #(
 
   // commands and reporting signals //
   ////////////////////////////////////
-  input logic ignore_tags_i,
   input logic perform_zeroing_i,
   output logic done_zeroing_o,
   input logic perform_flushing_i,
@@ -107,17 +106,6 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
   // local signals for per table-level accesses (root, leaf)
   //////////////////////////////////////////////////////////////////////////////
-  logic read_req_valid, read_req_ready;
-  tag_req_t read_req;
-  logic read_resp_valid, read_resp_ready;
-  tag_read_resp_t read_resp;
-  logic write_req_valid, write_req_ready;
-  tag_req_t write_req;
-  logic write_data_req_valid, write_data_req_ready;
-  tag_data_req_t write_data_req;
-  logic write_resp_valid, write_resp_ready;
-  tag_write_resp_t write_resp;
-
   logic root_read_req_valid[2], leaf_read_req_valid[2];
   logic root_read_req_ready[2], leaf_read_req_ready[2];
   tag_req_t root_read_req[2], leaf_read_req[2];
@@ -136,53 +124,6 @@ module tag_lookup_engine #(
 
   slv_req_t root_mem_req, leaf_mem_req;
   slv_resp_t root_mem_resp, leaf_mem_resp;
-
-  //////////////////////////////////////////////////////////////////////////////
-  // serve ignored tag requests
-  //////////////////////////////////////////////////////////////////////////////
-  tag_lookup_engine_ignore_request #(
-    .tag_req_t(tag_req_t),
-    .tag_data_req_t(tag_data_req_t),
-    .tag_write_resp_t(tag_write_resp_t),
-    .tag_read_resp_t(tag_read_resp_t)
-  ) i_tag_lookup_engine_ignore_request (
-    .clk_i,
-    .rst_ni,
-    // commands / reporting signals
-    .ignore_i(ignore_tags_i),
-    // incoming requests interface
-    .read_req_valid_i,
-    .read_req_ready_o,
-    .read_req_i,
-    .read_resp_valid_o,
-    .read_resp_ready_i,
-    .read_resp_o,
-    .write_req_valid_i,
-    .write_req_ready_o,
-    .write_req_i,
-    .write_data_req_valid_i,
-    .write_data_req_ready_o,
-    .write_data_req_i,
-    .write_resp_valid_o,
-    .write_resp_ready_i,
-    .write_resp_o,
-    // forwarded requests interface
-    .read_req_valid_o(read_req_valid),
-    .read_req_ready_i(read_req_ready),
-    .read_req_o(read_req),
-    .read_resp_valid_i(read_resp_valid),
-    .read_resp_ready_o(read_resp_ready),
-    .read_resp_i(read_resp),
-    .write_req_valid_o(write_req_valid),
-    .write_req_ready_i(write_req_ready),
-    .write_req_o(write_req),
-    .write_data_req_valid_o(write_data_req_valid),
-    .write_data_req_ready_i(write_data_req_ready),
-    .write_data_req_o(write_data_req),
-    .write_resp_valid_i(write_resp_valid),
-    .write_resp_ready_o(write_resp_ready),
-    .write_resp_i(write_resp)
-  );
 
   //////////////////////////////////////////////////////////////////////////////
   // generate per table-level accesses
@@ -207,21 +148,21 @@ module tag_lookup_engine #(
     .perform_flushing_i,
     .done_flushing_o,
     // incoming requests interface
-    .read_req_valid_i(read_req_valid),
-    .read_req_ready_o(read_req_ready),
-    .read_req_i(read_req),
-    .read_resp_valid_o(read_resp_valid),
-    .read_resp_ready_i(read_resp_ready),
-    .read_resp_o(read_resp),
-    .write_req_valid_i(write_req_valid),
-    .write_req_ready_o(write_req_ready),
-    .write_req_i(write_req),
-    .write_data_req_valid_i(write_data_req_valid),
-    .write_data_req_ready_o(write_data_req_ready),
-    .write_data_req_i(write_data_req),
-    .write_resp_valid_o(write_resp_valid),
-    .write_resp_ready_i(write_resp_ready),
-    .write_resp_o(write_resp),
+    .read_req_valid_i,
+    .read_req_ready_o,
+    .read_req_i,
+    .read_resp_valid_o,
+    .read_resp_ready_i,
+    .read_resp_o,
+    .write_req_valid_i,
+    .write_req_ready_o,
+    .write_req_i,
+    .write_data_req_valid_i,
+    .write_data_req_ready_o,
+    .write_data_req_i,
+    .write_resp_valid_o,
+    .write_resp_ready_i,
+    .write_resp_o,
     // outgoing interfaces (2 lvls, root, leaf)
     // root level interface
     .root_read_req_valid_o(root_read_req_valid),
@@ -403,157 +344,6 @@ module tag_lookup_engine #(
   //// debug
   //assign mem_req_o = leaf_mem_req;
   //assign leaf_mem_resp = mem_resp_i;
-
-endmodule
-
-module tag_lookup_engine_ignore_request #(
-  parameter type tag_req_t = logic,
-  parameter type tag_data_req_t = logic,
-  parameter type tag_write_resp_t = logic,
-  parameter type tag_read_resp_t = logic
-) (
-  input logic clk_i,
-  input logic rst_ni,
-  // ignore
-  input logic             ignore_i,
-  // incoming requests interface
-  input  logic            read_req_valid_i,
-  output logic            read_req_ready_o,
-  input  tag_req_t        read_req_i,
-  output logic            read_resp_valid_o,
-  input  logic            read_resp_ready_i,
-  output tag_read_resp_t  read_resp_o,
-  input  logic            write_req_valid_i,
-  output logic            write_req_ready_o,
-  input  tag_req_t        write_req_i,
-  input  logic            write_data_req_valid_i,
-  output logic            write_data_req_ready_o,
-  input  tag_data_req_t   write_data_req_i,
-  output logic            write_resp_valid_o,
-  input  logic            write_resp_ready_i,
-  output tag_write_resp_t write_resp_o,
-  // forwarded requests interface
-  output logic            read_req_valid_o,
-  input  logic            read_req_ready_i,
-  output tag_req_t        read_req_o,
-  input  logic            read_resp_valid_i,
-  output logic            read_resp_ready_o,
-  input  tag_read_resp_t  read_resp_i,
-  output logic            write_req_valid_o,
-  input  logic            write_req_ready_i,
-  output tag_req_t        write_req_o,
-  output logic            write_data_req_valid_o,
-  input  logic            write_data_req_ready_i,
-  output tag_data_req_t   write_data_req_o,
-  input  logic            write_resp_valid_i,
-  output logic            write_resp_ready_o,
-  input  tag_write_resp_t write_resp_i
-);
-
-  function automatic tag_read_resp_t dflt_read_resp(type(read_req_i.a_x_id) id);
-    tag_read_resp_t resp = tag_write_resp_t'{default: '0};
-    resp.id = id;
-    resp.data = '0;
-    resp.resp = axi_pkg::RESP_OKAY;
-    resp.last = 1'b1;
-    return resp;
-  endfunction
-
-  function automatic tag_write_resp_t dflt_write_resp(type(write_req_i.a_x_id) id);
-    tag_write_resp_t resp = tag_write_resp_t'{default: '0};
-    resp.id = id;
-    resp.resp = axi_pkg::RESP_OKAY;
-    resp.user = '0;
-    return resp;
-  endfunction
-
-  type(read_req_i.a_x_id) read_id_q, read_id_d;
-  logic read_valid_q, read_valid_d;
-  `FFL(read_id_q, read_id_d, 1'b1, 1'b0, clk_i, rst_ni)
-  `FFL(read_valid_q, read_valid_d, 1'b1, 1'b0, clk_i, rst_ni)
-  type(write_req_i.a_x_id) write_id_q, write_id_d;
-  logic write_valid_q, write_valid_d;
-  `FFL(write_id_q, write_id_d, 1'b1, 1'b0, clk_i, rst_ni)
-  `FFL(write_valid_q, write_valid_d, 1'b1, 1'b0, clk_i, rst_ni)
-
-  always_comb begin
-
-    // default latch values
-    read_id_d = read_id_q;
-    read_valid_d = read_valid_q;
-    write_id_d = write_id_q;
-    write_valid_d = write_valid_q;
-
-    read_req_ready_o = 1'b0;
-    read_req_o = read_req_i;
-
-    write_req_ready_o = 1'b0;
-    write_data_req_o = write_data_req_i;
-    write_req_o = write_req_i;
-    write_data_req_ready_o = 1'b0;
-
-    read_req_valid_o = 1'b0;
-    write_req_valid_o = 1'b0;
-    write_data_req_valid_o = 1'b0;
-
-    // handle requests
-    if (ignore_i) begin
-      // handle ignored read
-      if (read_req_valid_i && !read_valid_q) begin
-        read_valid_d = 1'b1;
-        read_id_d = read_req_i.a_x_id;
-        read_req_ready_o = 1'b1;
-      end
-      // handle ignored write
-      if (write_req_valid_i && write_data_req_valid_i && !write_valid_q) begin
-        write_valid_d = 1'b1;
-        write_id_d = write_req_i.a_x_id;
-        write_req_ready_o = 1'b1;
-        write_data_req_ready_o = 1'b1;
-      end
-    end else begin
-      // single flit read requests
-      read_req_valid_o = read_req_valid_i;
-      read_req_ready_o = read_req_ready_i;
-      // assume single flit write data
-      // assume simultaneous write and write data
-      write_req_valid_o = write_req_valid_i && write_data_req_valid_i;
-      write_req_ready_o = write_req_ready_i;
-      write_data_req_valid_o = write_req_valid_i && write_data_req_valid_i;
-      write_data_req_ready_o = write_data_req_ready_i;
-    end
-
-    read_resp_ready_o = 1'b0;
-    // handle read responses
-    if (read_valid_q) begin
-      read_resp_valid_o = 1'b1;
-      read_resp_o = dflt_read_resp(read_id_q);
-      if (read_resp_ready_i) read_valid_d = 1'b0;
-    end else if (ignore_i) begin
-      read_resp_valid_o = 1'b0;
-      read_resp_o = '0;
-    end else begin
-      read_resp_valid_o = read_resp_valid_i;
-      read_resp_ready_o = read_resp_ready_i;
-      read_resp_o = read_resp_i;
-    end
-
-    write_resp_ready_o = 1'b0;
-    // handle write responses
-    if (write_valid_q) begin
-      write_resp_valid_o = 1'b1;
-      write_resp_o = dflt_write_resp(write_id_q);
-      if (write_resp_ready_i) write_valid_d = 1'b0;
-    end else if (ignore_i) begin
-      write_resp_valid_o = 1'b0;
-      write_resp_o = '0;
-    end else begin
-      write_resp_valid_o = write_resp_valid_i;
-      write_resp_ready_o = write_resp_ready_i;
-      write_resp_o = write_resp_i;
-    end
-
-  end
 
 endmodule
 
