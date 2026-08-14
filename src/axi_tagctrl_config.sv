@@ -109,8 +109,9 @@ module axi_tagctrl_config #(
         ignore_tags_o = 1'b1;
         if (done_zeroing_i) fsm_state_d = SERVING;
       end
-      SERVING:
+      SERVING: begin
         if (cmd_stop) fsm_state_d = STOPPING;
+      end
       STOPPING: begin
         isolate_o = 1'b1;
         ignore_tags_o = 1'b1;
@@ -143,30 +144,15 @@ module axi_tagctrl_config #(
   status_t status_w;
   logic locked_q, locked_d;
   `FFL(locked_q, locked_d, locked_d, init_locked, clk_i, rst_ni)
-  // control register
-  typedef struct packed {
-    logic [38:0] res_63_25;
-    logic lock;
-    logic [6:0] res_23_17;
-    logic stop;
-    logic [6:0] res_15_9;
-    logic resume;
-    logic [6:0] res_7_1;
-    logic start;
-  } control_t;
-  control_t control_q, control_d;
-  logic control_le;
-  `FFL(control_q, control_d, control_le, control_t'{default: '0}, clk_i, rst_ni)
   // address registers
   axi_addr_t covered_base_q, covered_base_d;
   axi_addr_t covered_top_q, covered_top_d;
   axi_addr_t table_base_q, table_base_d;
   axi_addr_t table_top_q, table_top_d;
-  logic covered_base_le, covered_top_le, table_base_le, table_top_le;
-  `FFL(covered_base_q, covered_base_d, covered_base_le, init_covered_base, clk_i, rst_ni)
-  `FFL(covered_top_q, covered_top_d, covered_top_le, init_covered_top, clk_i, rst_ni)
-  `FFL(table_base_q, table_base_d, table_base_le, init_tag_store_base, clk_i, rst_ni)
-  `FFL(table_top_q, table_top_d, table_top_le, init_tag_store_top, clk_i, rst_ni)
+  `FFL(covered_base_q, covered_base_d, 1'b1, init_covered_base, clk_i, rst_ni)
+  `FFL(covered_top_q, covered_top_d, 1'b1, init_covered_top, clk_i, rst_ni)
+  `FFL(table_base_q, table_base_d, 1'b1, init_tag_store_base, clk_i, rst_ni)
+  `FFL(table_top_q, table_top_d, 1'b1, init_tag_store_top, clk_i, rst_ni)
 
   // produce output signals //
   ////////////////////////////
@@ -202,15 +188,15 @@ module axi_tagctrl_config #(
   // we latch requests to break the comb path
   // (read reqs are smaller than read resps)
   ar_chan_t read_req_q, read_req_d;
-  logic read_req_le, read_req_valid_q, read_req_valid_d;
-  `FFL(read_req_q, read_req_d, read_req_le, slv_req_t'{default: '0}, clk_i, rst_ni)
-  `FFL(read_req_valid_q, read_req_valid_d, read_req_le, 1'b0, clk_i, rst_ni)
+  logic read_req_valid_q, read_req_valid_d;
+  `FFL(read_req_q, read_req_d, 1'b1, slv_req_t'{default: '0}, clk_i, rst_ni)
+  `FFL(read_req_valid_q, read_req_valid_d, 1'b1, 1'b0, clk_i, rst_ni)
   always_comb begin : config_read
     // accept incoming request
-    read_req_le = 0;
+    read_req_valid_d = read_req_valid_q;
+    read_req_d = read_req_q;
     slv_resp_o.ar_ready = 1'b0;
     if (slv_req_i.ar_valid && !read_req_valid_q) begin
-      read_req_le = 1'b1;
       read_req_valid_d = 1'b1;
       read_req_d = slv_req_i.ar;
       slv_resp_o.ar_ready = 1'b1;
@@ -233,7 +219,7 @@ module axi_tagctrl_config #(
         12'h010: slv_resp_o.r.data = covered_base_q;
         12'h018: slv_resp_o.r.data = covered_top_q;
         12'h020: slv_resp_o.r.data = table_base_q;
-        12'h028: slv_resp_o.r.data = table_top_q;
+        12'h028: slv_resp_o.r.data = '0; // TODO
       endcase
       // send response
       slv_resp_o.r_valid = 1'b1;
@@ -244,7 +230,6 @@ module axi_tagctrl_config #(
       slv_resp_o.r.user = '0;
       // if the response is accepted, reset read interface state
       if (slv_req_i.r_ready) begin
-        read_req_le = 1'b1;
         read_req_valid_d = 1'b0;
       end
     end
@@ -255,40 +240,40 @@ module axi_tagctrl_config #(
   // we latch responses to break the comb path
   // (write resps are smaller than write reqs)
   b_chan_t write_resp_q, write_resp_d;
-  logic write_resp_le, write_resp_valid_q, write_resp_valid_d;
-  `FFL(write_resp_q, write_resp_d, write_resp_le, slv_req_t'{default: '0}, clk_i, rst_ni)
-  `FFL(write_resp_valid_q, write_resp_valid_d, write_resp_le, 1'b0, clk_i, rst_ni)
+  logic write_resp_valid_q, write_resp_valid_d;
+  `FFL(write_resp_q, write_resp_d, 1'b1, slv_req_t'{default: '0}, clk_i, rst_ni)
+  `FFL(write_resp_valid_q, write_resp_valid_d, 1'b1, 1'b0, clk_i, rst_ni)
   always_comb begin : config_write
+    automatic logic do_start, do_resume, do_stop, do_lock, do_config, accept, write_valid;
     // categorise write
-    logic do_start  = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h01);
-    logic do_resume = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h0100);
-    logic do_stop   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h010000);
-    logic do_lock   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h01000000);
-    logic do_config = slv_req_i.aw.addr[11:0] inside {12'h010, 12'h018, 12'h020};
+    do_start  = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h00000001);
+    do_resume = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h00000100);
+    do_stop   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h00010000);
+    do_lock   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h01000000);
+    do_config = slv_req_i.aw.addr[11:0] inside {12'h010, 12'h018, 12'h020};
     // establish if write is ignored or accepted
-    logic accept = (do_start && (fsm_state_q == UNCONFIGURED)) ||
-                   (do_resume && (fsm_state_q == UNCONFIGURED)) ||
-                   (do_stop && (fsm_state_q == SERVING)) ||
-                   (do_config && (fsm_state_q == UNCONFIGURED)) ||
-                   do_lock;
-    logic write_valid = slv_req_i.aw_valid && slv_req_i.w_valid; // && slv_req_i.w.last // TODO assert last?
+    accept = (do_start && (fsm_state_q == UNCONFIGURED)) ||
+             (do_resume && (fsm_state_q == UNCONFIGURED)) ||
+             (do_stop && (fsm_state_q == SERVING)) ||
+             (do_config && (fsm_state_q == UNCONFIGURED)) ||
+             do_lock;
+    write_valid = slv_req_i.aw_valid && slv_req_i.w_valid; // && slv_req_i.w.last // TODO assert last?
     // no register update by default
-    write_resp_le = 1'b0;
-    covered_base_le = 1'b0;
-    covered_top_le = 1'b0;
-    table_base_le = 1'b0;
+    covered_base_d = covered_base_q;
+    covered_top_d = covered_top_q;
+    table_base_d = table_base_q;
     cmd_start = 1'b0;
     cmd_resume = 1'b0;
     cmd_stop = 1'b0;
+    write_resp_valid_d = write_resp_valid_q;
+    write_resp_d = write_resp_q;
     // when write request (AW & W) present and no write is pending
     if (write_valid && !write_resp_valid_q) begin
       // consume write
       slv_resp_o.aw_ready = 1'b1;
       slv_resp_o.w_ready = 1'b1;
       // prepare response
-      write_resp_le = 1'b1;
       write_resp_valid_d = 1'b1;
-      write_resp_d = '0;
       write_resp_d.id = write_resp_q.id;
       write_resp_d.resp = axi_pkg::RESP_OKAY;
       write_resp_d.user = '0;
@@ -301,15 +286,12 @@ module axi_tagctrl_config #(
             else if (do_stop) cmd_stop = 1'b1;
           end
           12'h010: begin
-            covered_base_le = 1'b1;
             covered_base_d = slv_req_i.w.data & slv_req_i.w.strb;
           end
           12'h018: begin
-            covered_top_le = 1'b1;
             covered_top_d = slv_req_i.w.data & slv_req_i.w.strb;
           end
           12'h020: begin
-            table_base_le = 1'b1;
             table_base_d = slv_req_i.w.data & slv_req_i.w.strb;
           end
         endcase
@@ -323,7 +305,6 @@ module axi_tagctrl_config #(
       slv_resp_o.b = write_resp_q;
       // if the response is accepted, reset write interface state
       if (slv_req_i.b_ready) begin
-        write_resp_le = 1'b1;
         write_resp_valid_d = 1'b0;
       end
     end
