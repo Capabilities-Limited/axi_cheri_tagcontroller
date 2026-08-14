@@ -101,9 +101,9 @@ module axi_tagctrl_r #(
         get_tags();
       end
       SEND_R_CHANNEL: begin
-        if (tagc_inp_r_valid_q && !mem_fifo_empty) begin
+        if (tagc_inp_r_valid_q && (!mem_fifo_empty || tagctrl_desc_q.illegal_req)) begin
           r_chan_slv_valid_o = 1'b1;
-          mem_fifo_pop = r_chan_slv_ready_i;
+          mem_fifo_pop = r_chan_slv_ready_i & !tagctrl_desc_q.illegal_req;
           // update the address
           tagctrl_desc_d.a_x_addr = axi_pkg::aligned_addr(
             tagctrl_desc_q.a_x_addr + axi_pkg::num_bytes(
@@ -112,11 +112,13 @@ module axi_tagctrl_r #(
             tagctrl_desc_q.a_x_size
           );
           load_desc = r_chan_slv_ready_i;
-          r_chan_slv_o = mem_fifo_data;
+          r_chan_slv_o = tagctrl_desc_q.illegal_req ? '0 : mem_fifo_data;
           // set id filled with the one from the descriptor
           r_chan_slv_o.id = tagctrl_desc_q.a_x_id;
           // set user field with the tag bit
           r_chan_slv_o.user = (tagc_inp_r_q.data >> tag_bit_ind) & 1;
+          // override resp field if required
+          if (tagctrl_desc_q.x_resp != axi_pkg::RESP_OKAY) r_chan_slv_o.resp = tagctrl_desc_q.x_resp;
           // load more tags if needed
           if ((tag_bit_ind == (Cfg.AxiDataWidth - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
                   Cfg.CapSize/8

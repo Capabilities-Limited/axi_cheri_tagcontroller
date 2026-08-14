@@ -80,6 +80,8 @@ module axi_tagctrl_ax #(
   axi_addr_t tag_addr;
   // End of the access
   axi_addr_t addr_end;
+  // Whether the request attempts to directly access tags
+  logic illegal_req;
   // Whether request is in the covered region
   logic tagged_req;
 
@@ -89,11 +91,15 @@ module axi_tagctrl_ax #(
   assign tagc_desc_o = tagc_desc_q;
   assign tagc_valid_o = tagc_desc_valid_q;
   assign ax_mem_chan_mst_o = slv_chan_q;
-  assign ax_mem_chan_valid_o = slv_chan_valid_q;
+  assign ax_mem_chan_valid_o = slv_chan_valid_q && !illegal_req;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
   assign tag_addr = $unsigned(ax_chan_slv_i.addr - covered_base_addr_i) >> $clog2(Cfg.CapSize / 8);
-  assign addr_end = ax_chan_slv_i.addr + (axi_addr_t'(1 + ax_chan_slv_i.len) << ax_chan_slv_i.size);
-  assign tagged_req = !ignore_tags_i
+  assign addr_end = ax_chan_slv_i.addr + (addr_t'(1 + ax_chan_slv_i.len) << ax_chan_slv_i.size);
+  assign illegal_req = !ignore_tags_i
+                      && ax_chan_slv_i.addr >= tag_store_base_addr_i
+                      && addr_end <= tag_store_top_addr_i;
+  assign tagged_req = !illegal_req
+                      && !ignore_tags_i
                       && ax_chan_slv_i.addr >= covered_base_addr_i
                       && addr_end <= covered_top_addr_i;
 
@@ -106,7 +112,7 @@ module axi_tagctrl_ax #(
 
     if (slv_chan_valid_q) begin
       // send new request transaction
-      if (ax_mem_chan_ready_i) begin
+      if (ax_mem_chan_ready_i || illegal_req) begin
         slv_chan_valid_d = 1'b0;
         load_slv_chan_valid = 1'b1;
       end
@@ -149,7 +155,7 @@ module axi_tagctrl_ax #(
             a_x_len: 0,
             a_x_size: 0, // Supports 8 tag bits or less
             a_x_burst: axi_pkg::BURST_INCR,
-            x_resp: axi_pkg::RESP_OKAY,
+            x_resp: illegal_req ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY,
             x_last: 1'b1,
             default: '0
         };
