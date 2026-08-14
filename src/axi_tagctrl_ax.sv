@@ -20,6 +20,8 @@ module axi_tagctrl_ax #(
     input logic clk_i,
     /// Asynchronous reset, active low.
     input logic rst_ni,
+    /// Tag bypassing mode
+    input logic ignore_tags_i,
     /// Start of region covered by tags
     input axi_addr_t covered_base_addr_i,
     /// End of region covered by tags
@@ -74,10 +76,12 @@ module axi_tagctrl_ax #(
   logic load_slv_chan, load_slv_chan_valid;
 
   // Auxiliary signals
-  // Used to compute the end addr (addr begin + len)
-  axi_addr_t addr_end;
   // Tag address offset to fetch
   axi_addr_t tag_addr;
+  // End of the access
+  axi_addr_t addr_end;
+  // Whether request is in the covered region
+  logic tagged_req;
 
   // output assignments
   assign tagctrl_desc_o = tagctrl_desc_q;
@@ -88,6 +92,10 @@ module axi_tagctrl_ax #(
   assign ax_mem_chan_valid_o = slv_chan_valid_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
   assign tag_addr = $unsigned(ax_chan_slv_i.addr - covered_base_addr_i) >> $clog2(Cfg.CapSize / 8);
+  assign addr_end = ax_chan_slv_i.addr + (axi_addr_t'(1 + ax_chan_slv_i.len) << ax_chan_slv_i.size);
+  assign tagged_req = !ignore_tags_i
+                      && ax_chan_slv_i.addr >= covered_base_addr_i
+                      && addr_end <= covered_top_addr_i;
 
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
@@ -146,7 +154,7 @@ module axi_tagctrl_ax #(
             default: '0
         };
         load_tagc_desc = 1'b1;
-        tagc_desc_valid_d = 1'b1;
+        tagc_desc_valid_d = tagged_req;
         load_tagc_desc_valid = 1'b1;
       end
     end
@@ -176,6 +184,7 @@ module axi_tagctrl_ax #(
             a_x_len: ax_chan_slv_i.len,
             a_x_size: ax_chan_slv_i.size,
             x_last: 1'b1,
+            tagged_req: tagged_req,
             default: '0
         };
         load_tagctrl_desc = 1'b1;
