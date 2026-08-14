@@ -100,6 +100,7 @@ module tag_lookup_engine_table_lookups_read #(
     // root requests handling //
     // don't send any root requests ...
     root_req_valid_o = 1'b0;
+    root_req_o = '0;
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       // keep idx stable by starting search from retire pointer
       // (in case of alloc wrap around, starting from 0 risks changing selected req)
@@ -118,6 +119,7 @@ module tag_lookup_engine_table_lookups_read #(
 
     // leaf requests handling //
     leaf_req_valid_o = 1'b0;
+    leaf_req_o = '0;
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
       if (sb_r[idx].allocated && !sb_r[idx].leaf_sent) begin
@@ -150,6 +152,7 @@ module tag_lookup_engine_table_lookups_read #(
 
     // retire scoreboard entry //
     resp_valid_o = 1'b0; // don't send any response until ...
+    resp_o = '0;
     // ... all responses are received for the entry in the retire slot
     if (sb_r[retire_ptr_q].allocated &&
         sb_r[retire_ptr_q].root_received &&
