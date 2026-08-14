@@ -332,7 +332,7 @@ module hpdcache_wrapper #(
   function automatic hpdcache_mem_req_w_t mem_req_w_bit_2_byte(hpdcache_mem_req_bit_w_t req);
     hpdcache_mem_req_w_t ret;
     localparam int unsigned ratio = $bits(req.mem_req_w_be) / $bits(ret.mem_req_w_be);
-    for (int unsigned i = 0; i <= ratio; i++) begin
+    for (int unsigned i = 0; i < ratio; i++) begin
       assert (^(req.mem_req_w_be[i*ratio +: ratio]) == 0) else begin
         $display("TagController HPDCache must produce bit enables that can be expressed as byte enables. %x", req.mem_req_w_be);
         $error("Exiting.");
@@ -436,7 +436,7 @@ module hpdcache_wrapper #(
   // write requestors
   genvar writePortIdx;
   generate
-    for (writePortIdx = 0; writePortIdx < nReadPorts; writePortIdx++) begin : gen_write_ports
+    for (writePortIdx = 0; writePortIdx < nWritePorts; writePortIdx++) begin : gen_write_ports
       hpdcache_write_req_rsp_wrapper #(
         .HPDcacheCfg(HPDcacheCfg),
         .tag_req_t(tag_req_t),
