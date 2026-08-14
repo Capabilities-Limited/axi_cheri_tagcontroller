@@ -96,6 +96,14 @@ module tag_lookup_engine #(
   `AXI_TYPEDEF_AR_CHAN_T(mst_ar_chan_t, axi_addr_t, axi_mst_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(mst_r_chan_t, axi_data_t, axi_mst_id_t, axi_user_t)
 
+  // HPDCache wrapper parameters for root and leaf caches
+  localparam int unsigned nRootReadPorts = 64'd2;
+  localparam int unsigned nRootWritePorts = 64'd2;
+  localparam hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_cfg = root_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts);
+  localparam int unsigned nLeafReadPorts = 64'd2;
+  localparam int unsigned nLeafWritePorts = 64'd1;
+  localparam hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_cfg = leaf_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts);
+
   //////////////////////////////////////////////////////////////////////////////
   // local signals for per table-level accesses (root, leaf)
   //////////////////////////////////////////////////////////////////////////////
@@ -254,9 +262,6 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
 
   // root accesses
-  localparam int unsigned nRootReadPorts = 64'd2;
-  localparam int unsigned nRootWritePorts = 64'd2;
-  localparam hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_cfg = root_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts);
   hpdcache_wrapper #(
     .tag_req_t(tag_req_t),
     .tag_data_req_t(tag_data_req_t),
@@ -304,9 +309,6 @@ module tag_lookup_engine #(
   );
 
   // leaf accesses
-  localparam int unsigned nLeafReadPorts = 64'd2;
-  localparam int unsigned nLeafWritePorts = 64'd1;
-  localparam hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_cfg = leaf_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts);
   hpdcache_wrapper #(
     .tag_req_t(tag_req_t),
     .tag_data_req_t(tag_data_req_t),
@@ -649,7 +651,6 @@ module tag_lookup_engine_table_lookups #(
     .clk_i,
     .rst_ni,
     // incoming interface
-    .leaf_idx_i(addr_to_leaf_byte_idx(read_req_i.a_x_addr)),
     .root_idx_i(addr_to_root_byte_idx(read_req_i.a_x_addr)),
     .req_valid_i(read_req_valid_i),
     .req_ready_o(read_req_ready_o),
@@ -687,7 +688,6 @@ module tag_lookup_engine_table_lookups #(
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     // incoming interface
-    .leaf_idx_i(addr_to_leaf_byte_idx(write_req_i.a_x_addr)),
     .root_idx_i(addr_to_root_byte_idx(write_req_i.a_x_addr)),
     .req_valid_i(write_req_valid_i),
     .req_ready_o(write_req_ready_o),

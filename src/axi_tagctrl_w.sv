@@ -150,6 +150,7 @@ module axi_tagctrl_w #(
     // logic for b channel
     b_chan_mst_ready_o = 1'b0;
     b_chan_slv_valid_o = 1'b0;
+    b_chan_slv_o = '0;
     tagc_resp_ready_o = 1'b0;
     mem_b_chan_d = mem_b_chan_q;
     en_mem_b_chan = 1'b0;
