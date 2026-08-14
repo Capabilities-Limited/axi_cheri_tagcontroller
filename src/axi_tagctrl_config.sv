@@ -57,19 +57,6 @@ module axi_tagctrl_config #(
     return (value + (align - 1)) & ~(align - 1);
   endfunction
 
-  // init values
-  axi_addr_t init_covered_size_bytes = init_covered_top - init_covered_base;
-  axi_addr_t init_leaf_table_bits = ceil_div(init_covered_size_bytes, TAGGED_CHUNK_SIZE);
-  axi_addr_t init_leaf_table_bytes = ceil_div(init_leaf_table_bits, 8);
-  axi_addr_t init_root_table_bits = ceil_div(init_leaf_table_bits, GROUPING_FACTOR);
-  axi_addr_t init_root_table_bytes = ceil_div(init_root_table_bits, 8);
-  axi_addr_t init_leaf_table_base = init_tag_table_base;
-  axi_addr_t init_leaf_table_top = init_leaf_table_base + init_leaf_table_bytes;
-  axi_addr_t init_root_table_base = align_up(init_leaf_table_top, TAG_STORE_ALIGN);
-  axi_addr_t init_root_table_top = init_root_table_base + init_root_table_bytes;
-  axi_addr_t init_tag_store_base = init_leaf_table_base;
-  axi_addr_t init_tag_store_top = align_up(init_root_table_top, TAG_STORE_ALIGN);
-
   // FSM //
   /////////
   typedef enum logic [2:0] { INITIAL,
@@ -148,20 +135,23 @@ module axi_tagctrl_config #(
   axi_addr_t covered_base_q, covered_base_d;
   axi_addr_t covered_top_q, covered_top_d;
   axi_addr_t table_base_q, table_base_d;
-  axi_addr_t table_top_q, table_top_d;
   `FFL(covered_base_q, covered_base_d, 1'b1, init_covered_base, clk_i, rst_ni)
   `FFL(covered_top_q, covered_top_d, 1'b1, init_covered_top, clk_i, rst_ni)
-  `FFL(table_base_q, table_base_d, 1'b1, init_tag_store_base, clk_i, rst_ni)
-  `FFL(table_top_q, table_top_d, 1'b1, init_tag_store_top, clk_i, rst_ni)
+  `FFL(table_base_q, table_base_d, 1'b1, init_tag_table_base, clk_i, rst_ni)
 
   // produce output signals //
   ////////////////////////////
 
-  axi_addr_t covered_size_bytes = covered_top_q - covered_base_q;
-  axi_addr_t leaf_table_bits = ceil_div(covered_size_bytes, TAGGED_CHUNK_SIZE);
-  axi_addr_t leaf_table_bytes = ceil_div(leaf_table_bits, 8);
-  axi_addr_t root_table_bits = ceil_div(leaf_table_bits, GROUPING_FACTOR);
-  axi_addr_t root_table_bytes = ceil_div(root_table_bits, 8);
+  axi_addr_t covered_size_bytes;
+  assign covered_size_bytes = covered_top_q - covered_base_q;
+  axi_addr_t leaf_table_bits;
+  assign leaf_table_bits = ceil_div(covered_size_bytes, TAGGED_CHUNK_SIZE);
+  axi_addr_t leaf_table_bytes;
+  assign leaf_table_bytes = ceil_div(leaf_table_bits, 8);
+  axi_addr_t root_table_bits;
+  assign root_table_bits = ceil_div(leaf_table_bits, GROUPING_FACTOR);
+  axi_addr_t root_table_bytes;
+  assign root_table_bytes = ceil_div(root_table_bits, 8);
 
   assign covered_base_addr_o = covered_base_q;
   assign covered_top_addr_o = covered_top_q;
