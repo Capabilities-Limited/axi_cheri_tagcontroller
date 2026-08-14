@@ -70,7 +70,7 @@ module axi_tagctrl_ax #(
   // Used to compute the end addr (addr begin + len)
   addr_t addr_end;
   // Tag address offset to fetch
-  addr_t tag_addr, tag_off;
+  addr_t tag_addr;
 
   // output assignments
   assign tagctrl_desc_o = tagctrl_desc_q;
