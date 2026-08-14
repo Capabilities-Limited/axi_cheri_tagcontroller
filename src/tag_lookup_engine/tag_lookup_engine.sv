@@ -484,51 +484,69 @@ module tag_lookup_engine_ignore_request #(
     write_id_d = write_id_q;
     write_valid_d = write_valid_q;
 
+    read_req_ready_o = 1'b0;
+    read_req_o = read_req_i;
+
+    write_req_ready_o = 1'b0;
+    write_data_req_o = write_data_req_i;
+    write_req_o = write_req_i;
+    write_data_req_ready_o = 1'b0;
+
+    read_req_valid_o = 1'b0;
+    write_req_valid_o = 1'b0;
+    write_data_req_valid_o = 1'b0;
+
     // handle requests
     if (ignore_i) begin
       // handle ignored read
       if (read_req_valid_i && !read_valid_q) begin
         read_valid_d = 1'b1;
         read_id_d = read_req_i.a_x_id;
-        read_resp_ready_o = 1'b1;
+        read_req_ready_o = 1'b1;
       end
       // handle ignored write
-      if (write_req_valid_i && !write_valid_q) begin
+      if (write_req_valid_i && write_data_req_valid_i && !write_valid_q) begin
         write_valid_d = 1'b1;
         write_id_d = write_req_i.a_x_id;
-        write_resp_ready_o = 1'b1;
+        write_req_ready_o = 1'b1;
+        write_data_req_ready_o = 1'b1;
       end
     end else begin
       // single flit read requests
       read_req_valid_o = read_req_valid_i;
       read_req_ready_o = read_req_ready_i;
-      read_req_o = read_req_i;
       // assume single flit write data
       // assume simultaneous write and write data
       write_req_valid_o = write_req_valid_i && write_data_req_valid_i;
       write_req_ready_o = write_req_ready_i;
-      write_req_o = write_req_i;
       write_data_req_valid_o = write_req_valid_i && write_data_req_valid_i;
       write_data_req_ready_o = write_data_req_ready_i;
-      write_data_req_o = write_data_req_i;
     end
 
+    read_resp_ready_o = 1'b0;
     // handle read responses
     if (read_valid_q) begin
       read_resp_valid_o = 1'b1;
       read_resp_o = dflt_read_resp(read_id_q);
       if (read_resp_ready_i) read_valid_d = 1'b0;
+    end else if (ignore_i) begin
+      read_resp_valid_o = 1'b0;
+      read_resp_o = '0;
     end else begin
       read_resp_valid_o = read_resp_valid_i;
       read_resp_ready_o = read_resp_ready_i;
       read_resp_o = read_resp_i;
     end
 
+    write_resp_ready_o = 1'b0;
     // handle write responses
     if (write_valid_q) begin
       write_resp_valid_o = 1'b1;
       write_resp_o = dflt_write_resp(write_id_q);
       if (write_resp_ready_i) write_valid_d = 1'b0;
+    end else if (ignore_i) begin
+      write_resp_valid_o = 1'b0;
+      write_resp_o = '0;
     end else begin
       write_resp_valid_o = write_resp_valid_i;
       write_resp_ready_o = write_resp_ready_i;
