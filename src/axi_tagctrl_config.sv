@@ -72,13 +72,15 @@ module axi_tagctrl_config #(
 
   // FSM //
   /////////
-  typedef enum logic [2:0] { UNCONFIGURED,
+  typedef enum logic [2:0] { INITIAL,
+                             UNCONFIGURED,
                              ZEROING,
                              SERVING,
                              STOPPING,
-                             FLUSHING } fsm_state_t;
+                             FLUSHING
+                           } fsm_state_t;
   fsm_state_t fsm_state_q, fsm_state_d;
-  `FFL(fsm_state_q, fsm_state_d, 1'b1, (init_start ? ZEROING : UNCONFIGURED), clk_i, rst_ni)
+  `FFL(fsm_state_q, fsm_state_d, 1'b1, INITIAL, clk_i, rst_ni)
   logic cmd_start, cmd_resume, cmd_stop;
   always_comb begin : config_fsm
     fsm_state_d = fsm_state_q;
@@ -87,6 +89,14 @@ module axi_tagctrl_config #(
     perform_zeroing_o = 1'b0;
     perform_flushing_o = 1'b0;
     case (fsm_state_q)
+      INITIAL: begin
+        if (init_start) begin
+          perform_zeroing_o = 1'b1;
+          fsm_state_d = ZEROING;
+        end else begin
+          fsm_state_d = UNCONFIGURED;
+        end
+      end
       UNCONFIGURED: begin
         ignore_tags_o = 1'b1;
         if (cmd_start) begin
