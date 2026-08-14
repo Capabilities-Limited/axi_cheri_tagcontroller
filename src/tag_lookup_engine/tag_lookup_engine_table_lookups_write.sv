@@ -73,9 +73,6 @@ module tag_lookup_engine_table_lookups_write #(
     ret.a_x_len = '0;
     ret.a_x_size = '0;
     ret.a_x_burst = '0;
-    ret.a_x_lock = '0;
-    ret.a_x_cache = '0;
-    ret.a_x_prot = '0;
     ret.x_resp = '0;
     ret.x_last = 1'b1;
     return ret;
