@@ -10,9 +10,7 @@ module axi_tagctrl_ax #(
     /// Tag Controller configuration struct. Passed down from `axi_tagctrl_top.sv`.
     parameter axi_tagctrl_pkg::tagctrl_cfg_t Cfg = axi_tagctrl_pkg::tagctrl_cfg_t'{default: '0},
     /// AXI Tag Controller descriptor type definition,
-    parameter type tagctrl_desc_t = logic,
-    /// AXI Tag Cache descriptor type definition,
-    parameter type tagc_desc_t = logic,
+    parameter type desc_t = logic,
     /// AXI master port Ax channel type definition.
     parameter type ax_chan_t = logic
 ) (
@@ -27,7 +25,7 @@ module axi_tagctrl_ax #(
     /// AXI AX slave channel is ready.
     output logic ax_chan_ready_o,
     /// Output Tag cache descriptor payload.
-    output tagc_desc_t tagc_desc_o,
+    output desc_t tagc_desc_o,
     /// Output Tag cache descripor is valid.
     output logic tagc_valid_o,
     /// Tag cache is ready to receive a descriptor.
@@ -39,7 +37,7 @@ module axi_tagctrl_ax #(
     /// AXI AX memory master channel is ready.
     input logic ax_mem_chan_ready_i,
     /// Output descriptor payload to `axi_tagctrl_x.sv`
-    output tagctrl_desc_t tagctrl_desc_o,
+    output desc_t tagctrl_desc_o,
     /// Output descriptor is valid
     output logic tagctrl_valid_o,
     /// Next unit is ready to receive a descriptor.
@@ -52,12 +50,12 @@ module axi_tagctrl_ax #(
   typedef logic [Cfg.AxiAddrWidth-1:0] addr_t;
 
   // Register to hold the descriptor for tag controller pipeline
-  tagctrl_desc_t tagctrl_desc_d, tagctrl_desc_q;
+  desc_t tagctrl_desc_d, tagctrl_desc_q;
   logic tagctrl_desc_valid_d, tagctrl_desc_valid_q;
   logic load_tagctrl_desc, load_tagctrl_desc_valid;
 
   // Register to hold the descriptor for the tag cache
-  tagc_desc_t tagc_desc_d, tagc_desc_q;
+  desc_t tagc_desc_d, tagc_desc_q;
   logic tagc_desc_valid_d, tagc_desc_valid_q;
   logic load_tagc_desc, load_tagc_desc_valid;
 
@@ -123,7 +121,7 @@ module axi_tagctrl_ax #(
     end else begin
       // handshake complete read the ax channel data if valid
       if (ax_chan_valid_i && ax_chan_ready_o) begin
-        tagc_desc_d = tagc_desc_t'{
+        tagc_desc_d = desc_t'{
             // assign the id value so that transactions are always order
             a_x_id:
             id_mst_t
@@ -134,12 +132,6 @@ module axi_tagctrl_ax #(
             a_x_len: 0,
             a_x_size: 0, // Supports 8 tag bits or less
             a_x_burst: axi_pkg::BURST_INCR,
-            a_x_lock: 1'b0,
-            a_x_prot: 1'b0,
-            a_x_cache: (axi_pkg::CACHE_BUFFERABLE |
-                        axi_pkg::CACHE_MODIFIABLE |
-                        axi_pkg::CACHE_RD_ALLOC   |
-                        axi_pkg::CACHE_WR_ALLOC),
             x_resp: axi_pkg::RESP_OKAY,
             x_last: 1'b1,
             default: '0
@@ -167,7 +159,7 @@ module axi_tagctrl_ax #(
     end else begin
       // handshake complete read the ax channel data if valid
       if (ax_chan_valid_i && ax_chan_ready_o) begin
-        tagctrl_desc_d = tagctrl_desc_t'{
+        tagctrl_desc_d = desc_t'{
             // save original slave id to respond correctly
             a_x_id:
             ax_chan_slv_i.id,
@@ -186,9 +178,9 @@ module axi_tagctrl_ax #(
   // Registers
   `FFLARN(slv_chan_q, slv_chan_d, load_slv_chan, ax_chan_t'{default: '0}, clk_i, rst_ni)
   `FFLARN(slv_chan_valid_q, slv_chan_valid_d, load_slv_chan_valid, 1'b0, clk_i, rst_ni)
-  `FFLARN(tagc_desc_q, tagc_desc_d, load_tagc_desc, tagc_desc_t'{default: '0}, clk_i, rst_ni)
+  `FFLARN(tagc_desc_q, tagc_desc_d, load_tagc_desc, desc_t'{default: '0}, clk_i, rst_ni)
   `FFLARN(tagc_desc_valid_q, tagc_desc_valid_d, load_tagc_desc_valid, 1'b0, clk_i, rst_ni)
-  `FFLARN(tagctrl_desc_q, tagctrl_desc_d, load_tagctrl_desc, tagctrl_desc_t'{default: '0}, clk_i,
+  `FFLARN(tagctrl_desc_q, tagctrl_desc_d, load_tagctrl_desc, desc_t'{default: '0}, clk_i,
           rst_ni)
   `FFLARN(tagctrl_desc_valid_q, tagctrl_desc_valid_d, load_tagctrl_desc_valid, 1'b0, clk_i, rst_ni)
 

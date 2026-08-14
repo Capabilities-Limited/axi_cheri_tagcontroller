@@ -14,7 +14,7 @@ module axi_tagctrl_w #(
     /// [`axi_tag_ctrl_top`](module.axi_tag_ctrl_top
     parameter axi_tagctrl_pkg::tagctrl_cfg_t Cfg = axi_tagctrl_pkg::tagctrl_cfg_t'{default: '0},
     /// Tag Controller descriptor type definition.
-    parameter type tagctrl_desc_t = logic,
+    parameter type desc_t = logic,
     /// Tag Cache write payload definition.
     parameter type tagc_oup_t = logic,
     /// AXI slave port W channel struct definition.
@@ -29,7 +29,7 @@ module axi_tagctrl_w #(
     /// Testmode enable, active high.
     input logic test_i,
     /// Input descriptor payload.
-    input tagctrl_desc_t tagctrl_desc_i,
+    input desc_t tagctrl_desc_i,
     /// Input descriptor is valid.
     input logic tagctrl_desc_valid_i,
     /// Unit is ready to accept a new descriptor.
@@ -75,7 +75,7 @@ module axi_tagctrl_w #(
   typedef logic [Cfg.AxiDataWidth-1:0] axi_data_t;
   typedef logic [Cfg.AxiAddrWidth-1:0] axi_addr_t;
   // Registers
-  tagctrl_desc_t tagctrl_desc_d, tagctrl_desc_q;
+  desc_t tagctrl_desc_d, tagctrl_desc_q;
   logic load_desc;
   enum logic [1:0] {
     IDLE,

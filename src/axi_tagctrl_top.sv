@@ -114,12 +114,9 @@ module axi_tagctrl_top #(
     axi_pkg::len_t a_x_len;  // AXI burst length
     axi_pkg::size_t a_x_size;  // AXI burst size
     axi_pkg::burst_t a_x_burst;  // AXI burst type
-    logic a_x_lock;  // AXI lock signal
-    axi_pkg::cache_t a_x_cache;  // AXI cache signal
-    axi_pkg::prot_t a_x_prot;  // AXI protection signal
     axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
     logic x_last;  // Last descriptor of a burst
-  } tagc_desc_t;
+  } desc_t;
 
   // struct to pass between the tag controller and the tag cache
   typedef struct packed {
@@ -134,17 +131,6 @@ module axi_tagctrl_top #(
     axi_pkg::resp_t resp;
     logic           last;
   } tagc_inp_t;
-
-  typedef struct packed {
-    // AXI4+ATOP specific descriptor signals
-    axi_slv_id_t a_x_id;  // AXI ID from slave port
-    axi_addr_t a_x_addr;  // memory address
-    axi_pkg::len_t a_x_len;  // AXI burst length
-    axi_pkg::size_t a_x_size;  // AXI burst size
-    axi_pkg::burst_t a_x_burst;  // AXI burst type
-    axi_pkg::resp_t x_resp;  // AXI response signal, for error propagation
-    logic x_last;  // Last descriptor of a burst
-  } tagctrl_desc_t;
 
   // R tag bits payload between the tag cache and tag controller
   tagc_inp_t tagc_r_inp;
@@ -161,24 +147,24 @@ module axi_tagctrl_top #(
   slv_resp_t from_tagctrl_resp, tagctrl_resp, tagc_resp;
 
   // signals between channel splitters and rw_arb_tree
-  tagc_desc_t [1:0] ax_desc;
-  logic       [1:0] ax_desc_valid;
-  logic       [1:0] ax_desc_ready;
+  desc_t [1:0] ax_desc;
+  logic  [1:0] ax_desc_valid;
+  logic  [1:0] ax_desc_ready;
 
   // descriptor from the tagctrl_ar to the ar FIFO
-  tagc_desc_t       tagctrl_ar_desc;
+  desc_t tagctrl_ar_desc;
   logic tagctrl_ar_valid, tagctrl_ar_ready;
 
   // descriptor from the ar FIFO to the tagctrl_r unit
-  tagc_desc_t tagctrl_r_desc;
+  desc_t tagctrl_r_desc;
   logic tagctrl_r_valid, tagctrl_r_ready;
 
   // descriptor from the tagctrl_aw to the aw FIFO
-  tagc_desc_t tagctrl_aw_desc;
+  desc_t tagctrl_aw_desc;
   logic tagctrl_aw_valid, tagctrl_aw_ready;
 
   // descriptor from the aw FIFO to the tagctrl_w unit
-  tagc_desc_t tagctrl_w_desc;
+  desc_t tagctrl_w_desc;
   logic tagctrl_w_valid, tagctrl_w_ready;
 
   // configuration signals
@@ -247,7 +233,7 @@ module axi_tagctrl_top #(
 
   // backing tag memory accesses
   tag_lookup_engine #(
-    .tag_req_t(tagc_desc_t),
+    .tag_req_t(desc_t),
     .tag_data_req_t(tagc_oup_t),
     .tag_write_resp_t(slv_b_chan_t),
     .tag_read_resp_t(tagc_inp_t),
@@ -303,10 +289,9 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg           (Cfg),
-      .tagctrl_desc_t(tagctrl_desc_t),
-      .tagc_desc_t   (tagc_desc_t),
-      .ax_chan_t     (slv_ar_chan_t)
+      .Cfg       (Cfg),
+      .desc_t    (desc_t),
+      .ax_chan_t (slv_ar_chan_t)
   ) axi_tag_ctrl_ar (
       .clk_i,
       .rst_ni,
@@ -328,7 +313,7 @@ module axi_tagctrl_top #(
   stream_fifo #(
       .FALL_THROUGH(1'b1),
       .DEPTH       (Cfg.TagAXFifoDepth),
-      .T           (tagctrl_desc_t)
+      .T           (desc_t)
   ) i_stream_fifo_r (
       .clk_i,
       .rst_ni,
@@ -345,7 +330,7 @@ module axi_tagctrl_top #(
 
   axi_tagctrl_r #(
       .Cfg           (Cfg),
-      .tagctrl_desc_t(tagctrl_desc_t),
+      .desc_t        (desc_t),
       .tagc_inp_t    (tagc_inp_t),
       .r_chan_t      (slv_r_chan_t)
   ) i_axi_tag_ctrl_r (
@@ -371,8 +356,7 @@ module axi_tagctrl_top #(
 
   axi_tagctrl_ax #(
       .Cfg           (Cfg),
-      .tagctrl_desc_t(tagctrl_desc_t),
-      .tagc_desc_t   (tagc_desc_t),
+      .desc_t        (desc_t),
       .ax_chan_t     (slv_aw_chan_t)
   ) axi_tag_ctrl_aw (
       .clk_i,
@@ -395,7 +379,7 @@ module axi_tagctrl_top #(
   stream_fifo #(
       .FALL_THROUGH(1'b1),
       .DEPTH       (Cfg.TagWFifoDepth),
-      .T           (tagctrl_desc_t)
+      .T           (desc_t)
   ) i_stream_fifo_w (
       .clk_i,
       .rst_ni,
@@ -431,7 +415,7 @@ module axi_tagctrl_top #(
 
   axi_tagctrl_w #(
       .Cfg           (Cfg),
-      .tagctrl_desc_t(tagctrl_desc_t),
+      .desc_t        (desc_t),
       .tagc_oup_t    (tagc_oup_t),
       .w_chan_t      (w_chan_t),
       .b_chan_t      (slv_b_chan_t)
