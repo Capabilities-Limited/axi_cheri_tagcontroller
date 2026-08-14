@@ -93,7 +93,6 @@ module axi_tagctrl_config #(
       end
       ZEROING: begin
         isolate_o = 1'b1;
-        ignore_tags_o = 1'b1;
         if (done_zeroing_i) fsm_state_d = SERVING;
       end
       SERVING: begin
@@ -101,7 +100,6 @@ module axi_tagctrl_config #(
       end
       STOPPING: begin
         isolate_o = 1'b1;
-        ignore_tags_o = 1'b1;
         if (isolated_i) begin
           perform_flushing_o = 1'b1;
           fsm_state_d = FLUSHING;
@@ -109,7 +107,6 @@ module axi_tagctrl_config #(
       end
       FLUSHING: begin
         isolate_o = 1'b1;
-        ignore_tags_o = 1'b1;
         if (done_flushing_i) fsm_state_d = UNCONFIGURED;
       end
     endcase
