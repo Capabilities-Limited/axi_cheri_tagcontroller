@@ -211,7 +211,6 @@ module axi_tagctrl_config #(
       endcase
       // send response
       slv_resp_o.r_valid = 1'b1;
-      slv_resp_o.r = '0;
       slv_resp_o.r.id = read_req_q.id;
       slv_resp_o.r.resp = axi_pkg::RESP_OKAY;
       slv_resp_o.r.last = 1'b1;
