@@ -233,10 +233,13 @@ module axi_tagctrl_config #(
   always_comb begin : config_write
     automatic logic do_start, do_resume, do_stop, do_lock, do_config, accept, write_valid;
     // categorise write
-    do_start  = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h00000001);
-    do_resume = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h00000100);
-    do_stop   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h00010000);
-    do_lock   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & slv_req_i.w.strb & 'h01000000);
+    type(slv_req_i.w.data) bit_strb = '0;
+    for (int unsigned i = 0; i < $bits(slv_req_i.w.strb); i++)
+      bit_strb[i*8+:8] = slv_req_i.w.strb[i] ? '1 : '0;
+    do_start  = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & bit_strb & 'h00000001);
+    do_resume = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & bit_strb & 'h00000100);
+    do_stop   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & bit_strb & 'h00010000);
+    do_lock   = (slv_req_i.aw.addr[11:0] == 12'h008) && |(slv_req_i.w.data & bit_strb & 'h01000000);
     do_config = slv_req_i.aw.addr[11:0] inside {12'h010, 12'h018, 12'h020};
     // establish if write is ignored or accepted
     accept = (do_start && (fsm_state_q == UNCONFIGURED)) ||
@@ -273,13 +276,13 @@ module axi_tagctrl_config #(
             else if (do_stop) cmd_stop = 1'b1;
           end
           12'h010: begin
-            covered_base_d = slv_req_i.w.data & slv_req_i.w.strb;
+            covered_base_d = slv_req_i.w.data & bit_strb;
           end
           12'h018: begin
-            covered_top_d = slv_req_i.w.data & slv_req_i.w.strb;
+            covered_top_d = slv_req_i.w.data & bit_strb;
           end
           12'h020: begin
-            table_base_d = slv_req_i.w.data & slv_req_i.w.strb;
+            table_base_d = slv_req_i.w.data & bit_strb;
           end
         endcase
       end
