@@ -107,7 +107,8 @@ module axi_tagctrl_config #(
       end
       FLUSHING: begin
         // isolate_o = 1'b1; TODO isolate
-        if (done_flushing_i) fsm_state_d = UNCONFIGURED;
+        //if (done_flushing_i) fsm_state_d = UNCONFIGURED;
+        fsm_state_d = UNCONFIGURED;
       end
     endcase
   end
