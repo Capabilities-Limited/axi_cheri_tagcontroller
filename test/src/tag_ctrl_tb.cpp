@@ -44,17 +44,22 @@
 static vluint64_t main_time = 0;
 static std::string dumpfolder = "/test/logs/";
 static std::string dumpfile = "dump.vcd";
+#ifdef COVERAGE
+static std::string covfile = "coverage.dat";
+#endif
 
 class CTagctrl_tb : public ::testing::Test
 {
 protected:
   Vtag_ctrl_testharness *top;
   VerilatedVcdC *tfp;
+  VerilatedContext *contextp;
 
   void SetUp()
   {
     main_time = 0;
-    top = new (Vtag_ctrl_testharness);
+    contextp = new VerilatedContext;
+    top = new Vtag_ctrl_testharness(contextp);
 #if VM_TRACE
     // Enable Trace
     Verilated::traceEverOn(true); // Verilator must compute traced signals
@@ -70,13 +75,16 @@ protected:
   void TearDown()
   {
 #ifdef COVERAGE
-    Verilated::threadContextp()->coveragep()->write("coverage.dat");
+    std::string test_name = ::testing::UnitTest::GetInstance()->current_test_info()->name();
+    covfile = dumpfolder + test_name + "_coverage.dat";
+    Verilated::threadContextp()->coveragep()->write(covfile.c_str());
 #endif
     delete top;
 #if VM_TRACE
     tfp->close();
     delete tfp;
 #endif
+    delete contextp;
   }
 
 public:
@@ -299,6 +307,93 @@ public:
     w_beat.w_last = last;
     return w_beat;
   }
+
+  // conf
+  void reset_cfg_slave()
+  {
+    dut->cfg_aw_addr = 0;
+    dut->cfg_aw_valid = 0;
+    dut->cfg_w_valid = 0;
+    dut->cfg_w_data = 0;
+    dut->cfg_w_strb = 0;
+    dut->cfg_w_last = 0;
+    dut->cfg_b_ready = 0;
+    dut->cfg_ar_valid = 0;
+    dut->cfg_ar_addr = 0;
+    dut->cfg_r_ready = 0;
+  }
+
+  void send_cfg_write(uint32_t addr, uint64_t data)
+  {
+    dut->cfg_aw_addr = addr & 0xFFF;
+    dut->cfg_aw_valid = 1;
+    dut->cfg_w_data = data;
+    dut->cfg_w_strb = 0xffffffffffffffffULL;
+    dut->cfg_w_last = 1;
+    dut->cfg_w_valid = 1;
+    dut->eval();
+
+    while (dut->cfg_aw_valid == 1 || dut->cfg_w_valid == 1)
+    {
+      bool aw_ready_sampled = (dut->cfg_aw_ready == 1);
+      bool w_ready_sampled  = (dut->cfg_w_ready == 1);
+
+      tb->tick(1);
+
+      if (dut->cfg_aw_valid == 1 && aw_ready_sampled)
+      {
+        dut->cfg_aw_valid = 0;
+      }
+      if (dut->cfg_w_valid == 1 && w_ready_sampled)
+      {
+        dut->cfg_w_valid = 0;
+      }
+    }
+
+    dut->cfg_aw_addr = 0;
+    dut->cfg_w_data = 0;
+    dut->cfg_w_strb = 0;
+    dut->cfg_w_last = 0;
+
+    dut->cfg_b_ready = 1;
+    while (dut->cfg_b_valid != 1)
+      tb->tick(1);
+    tb->tick(1);
+    dut->cfg_b_ready = 0;
+  }
+
+  uint64_t send_cfg_read(uint32_t addr)
+  {
+    uint64_t r_data = 0;
+
+    dut->cfg_ar_addr = addr & 0xFFF;
+    dut->cfg_ar_valid = 1;
+    dut->eval();
+    if (dut->cfg_ar_ready == 1)
+    {
+      tb->tick(1);
+    }
+    else
+    {
+      while (dut->cfg_ar_ready != 1) {
+        tb->tick(1);
+      }
+      tb->tick(1);
+    }
+    dut->cfg_ar_addr = 0;
+    dut->cfg_ar_valid = 0;
+
+    dut->cfg_r_ready = 1;
+    while (dut->cfg_r_valid != 1)
+    {
+      tb->tick(1);
+    }
+    r_data = dut->cfg_r_data;
+    tb->tick(1);
+    dut->cfg_r_ready = 0;
+
+    return r_data;
+  }
 };
 
 static void usage(const char *program_name)
@@ -380,6 +475,86 @@ TEST_F(CTagctrl_tb, Rand_AXI_RW_OP)
       ASSERT_EQ(r_beat.r_user, w_beat.w_user);
     }
   }
+  delete driver;
+}
+
+TEST_F(CTagctrl_tb, Config_Interface_Full_Cycle)
+{
+  CTagCtrlDriver_tb *driver = new CTagCtrlDriver_tb(top, this);
+
+  // reset
+  driver->reset_slave();
+  driver->reset_cfg_slave();
+  tick(20);
+
+  // init_start == 1'b1 so reset in Zeroing -> Serving
+  uint64_t status = driver->send_cfg_read(0x000);
+  bool zeroing = (status >> 1) & 0x1;
+  ASSERT_TRUE(zeroing);
+  // wait until in serving
+  while (!(driver->send_cfg_read(0x000) & 0x1)) tick(10);
+  status = driver->send_cfg_read(0x000);
+  bool serving = status & 0x1;
+  ASSERT_TRUE(serving);
+
+  // test "stop" path
+  driver->send_cfg_write(0x008, 0x10000);
+  tick(1);
+
+  bool unconfigured = false;
+  for (int timeout = 0; timeout < 1000; timeout++)
+  {
+    status = driver->send_cfg_read(0x000);
+    unconfigured = (status >> 3) & 0x1;
+    if (unconfigured)
+      break;
+    tick(20);
+  }
+  ASSERT_TRUE(unconfigured) << "Timeout waiting for FSM to return to UNCONFIGURED state.";
+
+  // setup a configuration
+  uint64_t exp_base = 0x00004000; // Aligned with COVERED_ALIGN (8192)
+  uint64_t exp_top  = 0x00008000; // Aligned with COVERED_ALIGN (8192)
+  uint64_t exp_tbl  = 0x00000100; // Aligned with TAG_STORE_ALIGN (64)
+
+  driver->send_cfg_write(0x010, exp_base);
+  driver->send_cfg_write(0x018, exp_top);
+  driver->send_cfg_write(0x020, exp_tbl);
+
+  ASSERT_EQ(driver->send_cfg_read(0x010), exp_base);
+  ASSERT_EQ(driver->send_cfg_read(0x018), exp_top);
+  ASSERT_EQ(driver->send_cfg_read(0x020), exp_tbl);
+
+  status = driver->send_cfg_read(0x000);
+  uint8_t error_field = (status >> 16) & 0xFF;
+  ASSERT_EQ(error_field, 0);
+
+  // test "start" path
+  driver->send_cfg_write(0x008, 0x1);
+  tick(1);
+
+  zeroing = false;
+  for (int timeout = 0; timeout < 100; timeout++)
+  {
+    status = driver->send_cfg_read(0x000);
+    zeroing = (status >> 1) & 0x1;
+    if (zeroing)
+      break;
+    tick(10);
+  }
+  ASSERT_TRUE(zeroing) << "Timeout waiting for FSM to enter ZEROING state.";
+
+  serving = false;
+  for (int timeout = 0; timeout < 100; timeout++)
+  {
+    status = driver->send_cfg_read(0x000);
+    serving = status & 0x1;
+    if (serving)
+      break;
+    tick(10);
+  }
+  ASSERT_TRUE(serving) << "Timeout waiting for FSM to enter SERVING state.";
+
   delete driver;
 }
 
