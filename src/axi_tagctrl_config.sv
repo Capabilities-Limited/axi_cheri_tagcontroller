@@ -59,15 +59,15 @@ module axi_tagctrl_config #(
 
   // FSM //
   /////////
-  typedef enum logic [2:0] { INITIAL,
-                             UNCONFIGURED,
+  typedef enum logic [2:0] { UNCONFIGURED,
+                             ISOLATE_FOR_ZEROING,
                              ZEROING,
                              SERVING,
-                             STOPPING,
+                             ISOLATE_FOR_FLUSHING,
                              FLUSHING
                            } fsm_state_t;
   fsm_state_t fsm_state_q, fsm_state_d;
-  `FFL(fsm_state_q, fsm_state_d, 1'b1, INITIAL, clk_i, rst_ni)
+  `FFL(fsm_state_q, fsm_state_d, 1'b1, init_start ? ISOLATE_FOR_ZEROING : UNCONFIGURED, clk_i, rst_ni)
   logic cmd_start, cmd_resume, cmd_stop;
   always_comb begin : config_fsm
     fsm_state_d = fsm_state_q;
@@ -76,29 +76,26 @@ module axi_tagctrl_config #(
     perform_zeroing_o = 1'b0;
     perform_flushing_o = 1'b0;
     case (fsm_state_q)
-      INITIAL: begin
-        if (init_start) begin
-          perform_zeroing_o = 1'b1;
-          fsm_state_d = ZEROING;
-        end else begin
-          fsm_state_d = UNCONFIGURED;
-        end
-      end
       UNCONFIGURED: begin
         ignore_tags_o = 1'b1;
-        if (cmd_start) begin
+        if (cmd_start) fsm_state_d = ISOLATE_FOR_ZEROING;
+        else if (cmd_resume) fsm_state_d = SERVING;
+      end
+      ISOLATE_FOR_ZEROING: begin
+        isolate_o = 1'b1;
+        if (isolated_i) begin
           perform_zeroing_o = 1'b1;
           fsm_state_d = ZEROING;
-        end else if (cmd_resume) fsm_state_d = SERVING;
+        end
       end
       ZEROING: begin
         // isolate_o = 1'b1; TODO isolate
         if (done_zeroing_i) fsm_state_d = SERVING;
       end
       SERVING: begin
-        if (cmd_stop) fsm_state_d = STOPPING;
+        if (cmd_stop) fsm_state_d = ISOLATE_FOR_FLUSHING;
       end
-      STOPPING: begin
+      ISOLATE_FOR_FLUSHING: begin
         // isolate_o = 1'b1; TODO isolate
         if (/*isolated_i*/ 1'b1 /* TODO isolate */) begin
           perform_flushing_o = 1'b1;
@@ -121,7 +118,7 @@ module axi_tagctrl_config #(
     logic [10:0] res_15_5;
     logic locked;
     logic unconfigured;
-    logic stopping;
+    logic flushing;
     logic zeroing;
     logic serving;
   } status_t;
@@ -198,8 +195,8 @@ module axi_tagctrl_config #(
           status.error = error_o;
           status.locked = locked_q;
           status.unconfigured = (fsm_state_q == UNCONFIGURED);
-          status.stopping = (fsm_state_q inside {STOPPING, FLUSHING});
-          status.zeroing = (fsm_state_q == ZEROING);
+          status.flushing = (fsm_state_q inside {ISOLATE_FOR_FLUSHING, FLUSHING});
+          status.zeroing = (fsm_state_q inside {ISOLATE_FOR_ZEROING, ZEROING});
           status.serving = (fsm_state_q == SERVING);
           slv_resp_o.r.data = status;
         end
