@@ -180,7 +180,7 @@ module axi_tagctrl_w #(
         // start sending beats if the master interface is ready
         // and there are valid beats on the slave interface
         if (w_chan_slv_valid_i) begin
-          w_mst_fifo_push = 1'b1;
+          w_mst_fifo_push = !tagctrl_desc_q.illegal_req;
           // update the address
           addr = axi_pkg::aligned_addr(
             tagctrl_desc_q.a_x_addr + axi_pkg::num_bytes(
@@ -208,7 +208,7 @@ module axi_tagctrl_w #(
               w_chan_slv_ready_o = 1'b0;
             end else begin
               if (!w_mst_fifo_full) begin
-                tag_fifo_push = 1'b1;
+                tag_fifo_push = tagctrl_desc_q.tagged_req;
                 tag_fifo_indata.data = tagc_w_data_d;
                 tag_fifo_indata.strb = 8'b11111111;
                 tag_fifo_indata.bit_en = tagc_w_bit_en_d;
@@ -228,15 +228,16 @@ module axi_tagctrl_w #(
             w_chan_slv_ready_o = 1'b0;
           end
         end
-        if (w_chan_mst_o.last && w_mst_fifo_pop) begin
+        if (w_chan_mst_o.last && (w_mst_fifo_pop || tagctrl_desc_q.illegal_req)) begin
           state_d = WAIT_B_CHAN_RESP;
           b_chan_mst_ready_o = 1'b1;
           tagc_resp_ready_o = 1'b1;
-          if (b_chan_slv_ready_i && b_chan_mst_valid_i && tagc_resp_valid_i) begin
+          if (b_chan_slv_ready_i && b_chan_mst_valid_i && (tagc_resp_valid_i || !tagctrl_desc_q.tagged_req)) begin
             state_d = IDLE;
             b_chan_slv_o = b_chan_mst_i;
             b_chan_slv_o.id = tagctrl_desc_q.a_x_id;
-            if (tagc_resp_i.resp != axi_pkg::RESP_OKAY) b_chan_slv_o.resp = tagc_resp_i.resp;
+            if (tagctrl_desc_q.tagged_req && (tagc_resp_i.resp != axi_pkg::RESP_OKAY)) b_chan_slv_o.resp = tagc_resp_i.resp;
+            if (tagctrl_desc_q.x_resp != axi_pkg::RESP_OKAY) b_chan_slv_o.resp = tagctrl_desc_q.x_resp;
             b_chan_slv_valid_o = 1'b1;
           end else begin
             if (b_chan_mst_valid_i) begin
@@ -245,7 +246,7 @@ module axi_tagctrl_w #(
               mem_b_chan_valid_d = 1'b1;
               en_mem_b_chan_valid = 1'b1;
             end
-            if (tagc_resp_valid_i) begin
+            if (tagc_resp_valid_i || !tagctrl_desc_q.tagged_req) begin
               tagc_b_chan_d = tagc_resp_i;
               en_tagc_b_chan = 1'b1;
               tagc_b_chan_valid_d = 1'b1;
@@ -263,7 +264,7 @@ module axi_tagctrl_w #(
           mem_b_chan_valid_d = 1'b1;
           en_mem_b_chan_valid = 1'b1;
         end
-        if (tagc_resp_valid_i && !tagc_b_chan_valid_q) begin
+        if (!tagctrl_desc_q.tagged_req || (tagc_resp_valid_i && !tagc_b_chan_valid_q)) begin
           tagc_b_chan_d = tagc_resp_i;
           en_tagc_b_chan = 1'b1;
           tagc_b_chan_valid_d = 1'b1;
@@ -273,7 +274,8 @@ module axi_tagctrl_w #(
           state_d = IDLE;
           b_chan_slv_o = mem_b_chan_d;
           b_chan_slv_o.id = tagctrl_desc_q.a_x_id;
-          if (tagc_b_chan_d.resp != axi_pkg::RESP_OKAY) b_chan_slv_o.resp = tagc_b_chan_d.resp;
+          if (tagctrl_desc_q.tagged_req && (tagc_b_chan_d.resp != axi_pkg::RESP_OKAY)) b_chan_slv_o.resp = tagc_b_chan_d.resp;
+          if (tagctrl_desc_q.x_resp != axi_pkg::RESP_OKAY) b_chan_slv_o.resp = tagctrl_desc_q.x_resp;
           b_chan_slv_valid_o = 1'b1;
         end
       end
