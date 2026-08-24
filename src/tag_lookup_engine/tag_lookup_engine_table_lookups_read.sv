@@ -8,7 +8,6 @@ module tag_lookup_engine_table_lookups_read #(
   input  logic           clk_i,
   input  logic           rst_ni,
   // incoming interface
-  input  axi_addr_t      leaf_idx_i,
   input  axi_addr_t      root_idx_i,
   input  logic           req_valid_i,
   output logic           req_ready_o,

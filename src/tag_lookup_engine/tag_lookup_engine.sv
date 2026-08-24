@@ -627,12 +627,8 @@ module tag_lookup_engine_table_lookups #(
 );
 
   // helpers //
-  function automatic axi_addr_t addr_to_leaf_byte_idx(axi_addr_t addr);
-    return addr >> 3;
-  endfunction
-  function automatic axi_addr_t addr_to_root_byte_idx(axi_addr_t addr);
-    axi_addr_t leaf_idx = addr_to_leaf_byte_idx(addr);
-    return leaf_idx >> $clog2(GROUPING_FACTOR);
+  function automatic axi_addr_t cap_addr_to_root_idx(axi_addr_t cap_addr);
+    return cap_addr >> $clog2(GROUPING_FACTOR);
   endfunction
 
   // root table management fsm
@@ -669,7 +665,7 @@ module tag_lookup_engine_table_lookups #(
     .clk_i,
     .rst_ni,
     // incoming interface
-    .root_idx_i(addr_to_root_byte_idx(read_req_i.a_x_addr)),
+    .root_idx_i(cap_addr_to_root_idx(read_req_i.a_x_addr)),
     .req_valid_i(read_req_valid_i),
     .req_ready_o(read_req_ready_o),
     .req_i(read_req_i),
@@ -706,7 +702,7 @@ module tag_lookup_engine_table_lookups #(
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     // incoming interface
-    .root_idx_i(addr_to_root_byte_idx(write_req_i.a_x_addr)),
+    .root_idx_i(cap_addr_to_root_idx(write_req_i.a_x_addr)),
     .req_valid_i(write_req_valid_i),
     .req_ready_o(write_req_ready_o),
     .req_i(write_req_i),
