@@ -157,11 +157,13 @@ module tag_lookup_engine_table_lookups_read #(
     if (sb_r[retire_ptr_q].allocated &&
         sb_r[retire_ptr_q].root_received &&
         sb_r[retire_ptr_q].leaf_received) begin
-      resp_valid_o = 1'b1; // send response
-      // TODO only test the relevant bit of the root_resp
-      if (sb_r[retire_ptr_q].root_resp == 0) resp_o = sb_r[retire_ptr_q].root_resp;
-      else resp_o = sb_r[retire_ptr_q].leaf_resp;
+      localparam int unsigned w = $clog2($bits(sb_r[retire_ptr_q].root_resp.data));
+      if (sb_r[retire_ptr_q].root_resp.data[sb_r[retire_ptr_q].root_idx[0+:w]] == 1'b0) begin
+        resp_o = sb_r[retire_ptr_q].root_resp;
+        resp_o.data = '0;
+      end else resp_o = sb_r[retire_ptr_q].leaf_resp;
       resp_o.id = sb_r[retire_ptr_q].og_id; // overwrite id with original request id
+      resp_valid_o = 1'b1; // send response
       if (resp_ready_i) begin // when the response is consumed ...
         sb_d[retire_ptr_q].allocated = 1'b0; // deallocate scoreboard entry
         retire_ptr_d = retire_ptr_q + 1; // bump retire slot
