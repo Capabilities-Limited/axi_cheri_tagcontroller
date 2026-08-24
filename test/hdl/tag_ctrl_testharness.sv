@@ -365,7 +365,7 @@ module tag_ctrl_testharness #(
       .USER_WIDTH(AxiUserWidth),
       .USER_EN   (1'b0),
 `ifdef VERILATOR
-      .SIM_INIT  ("none"),
+      .SIM_INIT  ("ones"),
 `else
       .SIM_INIT  ("zeros"),
 `endif
