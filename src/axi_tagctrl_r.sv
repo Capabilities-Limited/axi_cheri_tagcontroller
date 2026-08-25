@@ -173,12 +173,10 @@ module axi_tagctrl_r #(
       tagc_inp_r_d = '0;
       load_tags = 1'b1;
       tagc_inp_r_valid_d = 1'b1;
-      load_tags_valid = 1'b1;
     end else if (tagc_inp_r_valid_i) begin
       tagc_inp_r_d = tagc_inp_r_i;
       load_tags = 1'b1;
       tagc_inp_r_valid_d = 1'b1;
-      load_tags_valid = 1'b1;
     end
   endfunction : get_tags
 
