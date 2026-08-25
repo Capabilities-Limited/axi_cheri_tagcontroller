@@ -285,7 +285,7 @@ public:
   {
     axi_ax_beat_t ax_beat;
     ax_beat.ax_id = rand() % (int)fabs((pow(2, Vtag_ctrl_testharness_tag_ctrl_testharness::AxiIdWidth)));
-    ax_beat.ax_addr = (rand() % (Vtag_ctrl_testharness_tag_ctrl_testharness::TagCacheMemBase - Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase + 1)) + Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
+    ax_beat.ax_addr = (rand() % Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemLength) + Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
     // align to 4KiB
     ax_beat.ax_addr = ax_beat.ax_addr & ~(4095);
     //ax_beat.ax_len = (uint8_t)(0);
@@ -302,7 +302,7 @@ public:
   {
     axi_w_beat_t w_beat;
     w_beat.w_strb = 0xff;
-    w_beat.w_data = (rand() % (Vtag_ctrl_testharness_tag_ctrl_testharness::TagCacheMemBase - Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase + 1)) + Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
+    w_beat.w_data = (rand() % Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemLength) + Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
     w_beat.w_user = rand() % 2;
     w_beat.w_last = last;
     return w_beat;
