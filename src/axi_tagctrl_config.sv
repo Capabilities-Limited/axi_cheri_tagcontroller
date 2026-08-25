@@ -92,23 +92,22 @@ module axi_tagctrl_config #(
         end else if (cmd_resume) fsm_state_d = SERVING;
       end
       ZEROING: begin
-        // isolate_o = 1'b1; TODO isolate
+        isolate_o = 1'b1; // hold isolation until zeroing finishes
         if (done_zeroing_i) fsm_state_d = SERVING;
       end
       SERVING: begin
         if (cmd_stop) fsm_state_d = STOPPING;
       end
       STOPPING: begin
-        // isolate_o = 1'b1; TODO isolate
-        if (/*isolated_i*/ 1'b1 /* TODO isolate */) begin
+        isolate_o = 1'b1;
+        if (isolated_i) begin
           perform_flushing_o = 1'b1;
           fsm_state_d = FLUSHING;
         end
       end
       FLUSHING: begin
-        // isolate_o = 1'b1; TODO isolate
-        //if (done_flushing_i) fsm_state_d = UNCONFIGURED;
-        fsm_state_d = UNCONFIGURED;
+        isolate_o = 1'b1; // hold isolation until flushing finishes
+        if (done_flushing_i) fsm_state_d = UNCONFIGURED;
       end
     endcase
   end
