@@ -191,8 +191,12 @@ module axi_tagctrl_config #(
     end
     // handle previously accepted request
     slv_resp_o.r_valid = 1'b0;
+    slv_resp_o.r.data = '0;
+    slv_resp_o.r.id = read_req_q.id;
+    slv_resp_o.r.resp = axi_pkg::RESP_OKAY;
+    slv_resp_o.r.last = 1'b1;
+    slv_resp_o.r.user = '0;
     if (read_req_valid_q) begin
-      slv_resp_o.r.data = '0;
       case (read_req_q.addr[11:0])
         12'h000: begin
           automatic status_t status = status_t'{default: '0};
@@ -211,10 +215,6 @@ module axi_tagctrl_config #(
       endcase
       // send response
       slv_resp_o.r_valid = 1'b1;
-      slv_resp_o.r.id = read_req_q.id;
-      slv_resp_o.r.resp = axi_pkg::RESP_OKAY;
-      slv_resp_o.r.last = 1'b1;
-      slv_resp_o.r.user = '0;
       // if the response is accepted, reset read interface state
       if (slv_req_i.r_ready) begin
         read_req_valid_d = 1'b0;
@@ -257,6 +257,8 @@ module axi_tagctrl_config #(
     cmd_stop = 1'b0;
     write_resp_valid_d = write_resp_valid_q;
     write_resp_d = write_resp_q;
+    slv_resp_o.aw_ready = 1'b0;
+    slv_resp_o.w_ready = 1'b0;
     // when write request (AW & W) present and no write is pending
     if (write_valid && !write_resp_valid_q) begin
       // consume write
@@ -288,11 +290,12 @@ module axi_tagctrl_config #(
       end
     end
 
+    slv_resp_o.b_valid = 1'b0;
+    slv_resp_o.b = write_resp_q;
     // send response
     if (write_resp_valid_q) begin
       // default b response
       slv_resp_o.b_valid = 1'b1;
-      slv_resp_o.b = write_resp_q;
       // if the response is accepted, reset write interface state
       if (slv_req_i.b_ready) begin
         write_resp_valid_d = 1'b0;
