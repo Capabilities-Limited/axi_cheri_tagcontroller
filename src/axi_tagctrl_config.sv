@@ -30,9 +30,9 @@ module axi_tagctrl_config #(
   input logic isolated_i,
   output logic ignore_tags_o,
   output logic perform_zeroing_o,
-  output logic done_zeroing_i,
+  input logic done_zeroing_i,
   output logic perform_flushing_o,
-  output logic done_flushing_i,
+  input logic done_flushing_i,
 
   // reporting
   output axi_addr_t covered_base_addr_o,
