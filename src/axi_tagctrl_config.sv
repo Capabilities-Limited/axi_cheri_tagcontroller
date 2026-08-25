@@ -211,7 +211,7 @@ module axi_tagctrl_config #(
         12'h010: slv_resp_o.r.data = covered_base_q;
         12'h018: slv_resp_o.r.data = covered_top_q;
         12'h020: slv_resp_o.r.data = table_base_q;
-        12'h028: slv_resp_o.r.data = '0; // TODO
+        12'h028: slv_resp_o.r.data = tag_store_top_addr_o;
       endcase
       // send response
       slv_resp_o.r_valid = 1'b1;
