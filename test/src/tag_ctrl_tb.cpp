@@ -561,6 +561,184 @@ TEST_F(CTagctrl_tb, Config_Interface_Full_Cycle)
   delete driver;
 }
 
+TEST_F(CTagctrl_tb, Config_And_Rand_RW)
+{
+  CTagCtrlDriver_tb *driver = new CTagCtrlDriver_tb(top, this);
+  axi_ax_beat_t aw_beat;
+  axi_ax_beat_t ar_beat;
+  axi_w_beat_t w_beat, last_w_beat;
+  axi_r_beat_t r_beat;
+  axi_b_beat_t b_beat;
+  std::deque<axi_w_beat_t> axi_w_beat_q;
+
+  // reset
+  driver->reset_slave();
+  driver->reset_cfg_slave();
+  tick(2500);
+
+  // enter conf mode
+  driver->send_cfg_write(0x008, 0x10000);
+  tick(1);
+  uint64_t status = driver->send_cfg_read(0x000);
+  bool unconfigured = false;
+  for (int timeout = 0; timeout < 1000; timeout++)
+  {
+    status = driver->send_cfg_read(0x000);
+    unconfigured = (status >> 3) & 0x1;
+    if (unconfigured)
+      break;
+    tick(20);
+  }
+  ASSERT_TRUE(unconfigured) << "Timeout waiting for FSM to return to UNCONFIGURED state.";
+  // setup a configuration
+  uint64_t cov_base = Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase + 0x2000; // Aligned with COVERED_ALIGN (8192)
+  uint64_t cov_top  = cov_base + 0x8000; // Aligned with COVERED_ALIGN (8192)
+  uint64_t tbl_base = cov_top + 0x100; // Aligned with TAG_STORE_ALIGN (64)
+  driver->send_cfg_write(0x010, cov_base);
+  driver->send_cfg_write(0x018, cov_top);
+  driver->send_cfg_write(0x020, tbl_base);
+  ASSERT_EQ(driver->send_cfg_read(0x010), cov_base);
+  ASSERT_EQ(driver->send_cfg_read(0x018), cov_top);
+  ASSERT_EQ(driver->send_cfg_read(0x020), tbl_base);
+  driver->send_cfg_write(0x008, 0x1);
+  tick(1);
+  // start serving
+  driver->send_cfg_write(0x008, 0x1);
+  tick(1);
+  bool serving = false;
+  for (int timeout = 0; timeout < 100; timeout++)
+  {
+    status = driver->send_cfg_read(0x000);
+    serving = status & 0x1;
+    if (serving)
+      break;
+    tick(10);
+  }
+  ASSERT_TRUE(serving) << "Timeout waiting for FSM to enter SERVING state.";
+
+  // Test accesses within covered region
+  printf("test inside\n");
+  for (uint64_t i = 0; i < MAX_NUM_REPS; i++)
+  {
+    // Generate random aw beat and ar beat
+    aw_beat = driver->rand_ax_beat(cov_base, cov_top-cov_base);
+    ar_beat = aw_beat;
+    // Reset CPU slave interface
+    driver->reset_slave();
+    // Send aw beat
+    driver->send_aw(aw_beat);
+    int last = 0;
+    uint8_t len = aw_beat.ax_len;
+    uint64_t addr = 0;
+    uint64_t last_addr = 0;
+    for (uint64_t i = 0; i <= len; i++)
+    {
+      // Check if it is the last beat
+      last = (i == len) ? 1 : 0;
+      // Generate a random write beat
+      w_beat = driver->rand_w_beat(last, cov_base, cov_top-cov_base);
+      // compute beat address
+      addr = (aw_beat.ax_addr + i * 8) >> (int)fabs(log2(Vtag_ctrl_testharness_tag_ctrl_testharness::CapSize / 8));
+      // Store last beat address
+      if (i == 0)
+        last_addr = aw_beat.ax_addr;
+      else
+        last_addr = (aw_beat.ax_addr + (i - 1) * 8) >> (int)fabs(log2(Vtag_ctrl_testharness_tag_ctrl_testharness::CapSize / 8));
+      // Check if this beat + the last form a 128-bit data value
+      // if so the user value or the capability bit should be the same
+      if (last_addr == addr)
+        w_beat.w_user = last_w_beat.w_user;
+      driver->send_w(w_beat);
+      axi_w_beat_q.push_back(w_beat);
+      last_w_beat = w_beat;
+    }
+    // Receive the b response
+    b_beat = driver->recv_b();
+    // Assert if the transaction ID is correct
+    ASSERT_EQ(b_beat.b_id, aw_beat.ax_id);
+    // Assert if we got a OKAY response
+    ASSERT_EQ(b_beat.b_resp, RESP_OKAY);
+    driver->send_ar(ar_beat);
+    for (uint64_t i = 0; i <= len; i++)
+    {
+      r_beat = driver->recv_r();
+      ASSERT_EQ(r_beat.r_id, ar_beat.ax_id);
+      // Get the write beat to perform the assertion
+      w_beat = axi_w_beat_q.front();
+      axi_w_beat_q.pop_front();
+      ASSERT_EQ(r_beat.r_data, w_beat.w_data);
+      ASSERT_EQ(r_beat.r_resp, RESP_OKAY);
+      if (i == len)
+        ASSERT_EQ(r_beat.r_last, 1);
+      else
+        ASSERT_EQ(r_beat.r_last, 0);
+      ASSERT_EQ(r_beat.r_user, w_beat.w_user);
+    }
+  }
+
+  // Test accesses out of covered region
+  printf("test outside\n");
+  for (uint64_t i = 0; i < MAX_NUM_REPS; i++)
+  {
+    // Generate random aw beat and ar beat
+    aw_beat = driver->rand_ax_beat(cov_top, tbl_base-cov_top);
+    ar_beat = aw_beat;
+    // Reset CPU slave interface
+    driver->reset_slave();
+    // Send aw beat
+    driver->send_aw(aw_beat);
+    int last = 0;
+    uint8_t len = aw_beat.ax_len;
+    uint64_t addr = 0;
+    uint64_t last_addr = 0;
+    for (uint64_t i = 0; i <= len; i++)
+    {
+      // Check if it is the last beat
+      last = (i == len) ? 1 : 0;
+      // Generate a random write beat
+      w_beat = driver->rand_w_beat(last, cov_top, tbl_base-cov_top);
+      // compute beat address
+      addr = (aw_beat.ax_addr + i * 8) >> (int)fabs(log2(Vtag_ctrl_testharness_tag_ctrl_testharness::CapSize / 8));
+      // Store last beat address
+      if (i == 0)
+        last_addr = aw_beat.ax_addr;
+      else
+        last_addr = (aw_beat.ax_addr + (i - 1) * 8) >> (int)fabs(log2(Vtag_ctrl_testharness_tag_ctrl_testharness::CapSize / 8));
+      // Check if this beat + the last form a 128-bit data value
+      // if so the user value or the capability bit should be the same
+      if (last_addr == addr)
+        w_beat.w_user = last_w_beat.w_user;
+      driver->send_w(w_beat);
+      axi_w_beat_q.push_back(w_beat);
+      last_w_beat = w_beat;
+    }
+    // Receive the b response
+    b_beat = driver->recv_b();
+    // Assert if the transaction ID is correct
+    ASSERT_EQ(b_beat.b_id, aw_beat.ax_id);
+    // Assert if we got a OKAY response
+    ASSERT_EQ(b_beat.b_resp, RESP_OKAY);
+    driver->send_ar(ar_beat);
+    for (uint64_t i = 0; i <= len; i++)
+    {
+      r_beat = driver->recv_r();
+      ASSERT_EQ(r_beat.r_id, ar_beat.ax_id);
+      // Get the write beat to perform the assertion
+      w_beat = axi_w_beat_q.front();
+      axi_w_beat_q.pop_front();
+      ASSERT_EQ(r_beat.r_data, w_beat.w_data);
+      ASSERT_EQ(r_beat.r_resp, RESP_OKAY);
+      if (i == len)
+        ASSERT_EQ(r_beat.r_last, 1);
+      else
+        ASSERT_EQ(r_beat.r_last, 0);
+      ASSERT_EQ(r_beat.r_user, 0);
+    }
+  }
+
+  delete driver;
+}
+
 int main(int argc, char **argv)
 {
   std::clock_t c_start = std::clock();
