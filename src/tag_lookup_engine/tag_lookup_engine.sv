@@ -421,6 +421,9 @@ module tag_lookup_engine_table_lookups #(
     return cap_addr >> $clog2(GROUPING_FACTOR);
   endfunction
 
+  // perform_flushing_i // TODO implement
+  assign done_flushing_o = 1'b1; // TODO implement
+
   // root table management fsm
   tag_lookup_engine_root_init #(
     .tag_req_t(tag_req_t),
