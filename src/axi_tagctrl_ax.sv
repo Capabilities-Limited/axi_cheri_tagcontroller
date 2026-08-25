@@ -78,8 +78,6 @@ module axi_tagctrl_ax #(
   // Auxiliary signals
   // Tag address offset to fetch
   axi_addr_t tag_addr;
-  // End of the access
-  axi_addr_t addr_end;
   // Whether request is in the covered region
   logic tagged_req;
 
@@ -92,10 +90,12 @@ module axi_tagctrl_ax #(
   assign ax_mem_chan_valid_o = slv_chan_valid_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
   assign tag_addr = $unsigned(ax_chan_slv_i.addr - covered_base_addr_i) >> $clog2(Cfg.CapSize / 8);
-  assign addr_end = ax_chan_slv_i.addr + (axi_addr_t'(1 + ax_chan_slv_i.len) << ax_chan_slv_i.size);
   assign tagged_req = !ignore_tags_i
                       && ax_chan_slv_i.addr >= covered_base_addr_i
-                      && addr_end <= covered_top_addr_i;
+                      && ax_chan_slv_i.addr  <  covered_top_addr_i;
+  // Note: testing the start address of the access (as opposed to the end)
+  // against covered_top_addr_i is sufficient as AXI accesses are at most 4K
+  // and covered_top_addr_i is at worst 8K aligned (or a config error is raised)
 
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
