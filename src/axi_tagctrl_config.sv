@@ -266,7 +266,7 @@ module axi_tagctrl_config #(
       slv_resp_o.w_ready = 1'b1;
       // prepare response
       write_resp_valid_d = 1'b1;
-      write_resp_d.id = write_resp_q.id;
+      write_resp_d.id = slv_req_i.aw.id;
       write_resp_d.resp = axi_pkg::RESP_OKAY;
       write_resp_d.user = '0;
       // when write is not ignored, perform desired effect
