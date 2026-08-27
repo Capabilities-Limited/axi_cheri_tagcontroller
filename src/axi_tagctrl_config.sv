@@ -82,6 +82,7 @@ module axi_tagctrl_config #(
         else if (cmd_resume) fsm_state_d = SERVING;
       end
       PRE_ZEROING: begin
+        ignore_tags_o = 1'b1;
         isolate_o = 1'b1;
         if (isolated_i) begin
           perform_zeroing_o = 1'b1;
