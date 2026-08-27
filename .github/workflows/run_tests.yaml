@@ -1,12 +1,8 @@
 name: "CHERI tag controller tests"
 
 on:
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - main
+  - pull_request
+  - push
 
 jobs:
   tests:
