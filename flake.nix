@@ -13,8 +13,6 @@
       perSystem = { config, pkgs, system, ... }: {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            cowsay
-            lolcat
             gtest
             bender
             verilator
@@ -23,7 +21,7 @@
           GREETING = "cheri tag controller devshell";
           RISCV = "NOT_IN_USE";
           shellHook = ''
-            echo "$GREETING" | cowsay | lolcat
+            echo "$GREETING"
           '';
         };
       };
