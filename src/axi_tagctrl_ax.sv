@@ -99,8 +99,8 @@ module axi_tagctrl_ax #(
                       && ax_chan_slv_i.addr  <  covered_top_addr_i;
   assign addr_end = ax_chan_slv_i.addr + (axi_addr_t'(1 + ax_chan_slv_i.len) << ax_chan_slv_i.size);
   assign illegal_req = !ignore_tags_i
-                      && ax_chan_slv_i.addr >= tag_store_base_addr_i
-                      && addr_end <= tag_store_top_addr_i;
+                      && ax_chan_slv_i.addr < tag_store_top_addr_i
+                      && addr_end > tag_store_base_addr_i;
   // Note: testing the start address of the access (as opposed to the end)
   // against covered_top_addr_i is sufficient as AXI accesses are at most 4K
   // and covered_top_addr_i is at worst 8K aligned (or a config error is raised)
