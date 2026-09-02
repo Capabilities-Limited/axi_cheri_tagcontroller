@@ -528,7 +528,6 @@ module axi_tagctrl_top #(
   );
 
   // pragma translate_off
-`ifndef VERILATOR
   initial begin : proc_assert_axi_params
     axi_addr_width :
     assert (AxiAddrWidth > 32'd0)
@@ -615,7 +614,6 @@ module axi_tagctrl_top #(
     assert ($bits(mst_r_chan_t) == $bits(mst_resp_i.r))
     else $fatal(1, $sformatf("llc> AXI Slave port, slv_r_chan_t and mst_resp_i.r not equal"));
   end
-`endif
   // pragma translate_on
 
 endmodule
