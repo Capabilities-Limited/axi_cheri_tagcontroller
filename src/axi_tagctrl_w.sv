@@ -285,7 +285,7 @@ module axi_tagctrl_w #(
 
   end
   // this function loads a new descriptor from the `axi_tagctrl_ax.sv` unit
-  function void load_new_desc();
+  function automatic void load_new_desc();
     tagctrl_desc_ready_o = 1'b1;
     state_d = IDLE;
     // new descriptor at the input
