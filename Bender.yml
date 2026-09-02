@@ -26,6 +26,10 @@ sources:
   - src/tag_lookup_engine/tag_lookup_engine_root_init.sv
   - src/tag_lookup_engine/tag_lookup_engine_hpdcache_configs.sv
   - src/tag_lookup_engine/tag_lookup_engine_hpdcache_wrapper.sv
+  - src/tag_lookup_engine/tag_lookup_engine_hpdcache_read_req_rsp_wrapper.sv
+  - src/tag_lookup_engine/tag_lookup_engine_hpdcache_write_req_rsp_wrapper.sv
+
+  - src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv
   - src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv
   - src/tag_lookup_engine/tag_lookup_engine_table_lookups_write.sv
   # Level 1
