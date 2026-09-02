@@ -164,7 +164,7 @@ module axi_tagctrl_r #(
   endfunction : load_new_desc
 
   // this function loads a new descriptor from the `axi_tagctrl_ax.sv` unit
-  function void get_tags();
+  function automatic void get_tags();
     tagc_inp_r_ready_o = 1'b1;
     tagc_inp_r_valid_d = 1'b0;
     load_tags_valid = 1'b1;
