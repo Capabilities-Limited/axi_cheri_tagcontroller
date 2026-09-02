@@ -60,7 +60,8 @@ module tag_lookup_engine_table_lookups_write #(
   localparam int unsigned FLIT_CNT_W = (LEAF_FLITS > 1) ? $clog2(LEAF_FLITS) : 1;
 
   function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
-    tag_req_t ret = desc;
+    automatic tag_req_t ret;
+    ret = desc;
     ret.a_x_addr = addr;
     return ret;
   endfunction
