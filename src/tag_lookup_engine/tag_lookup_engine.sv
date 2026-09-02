@@ -436,6 +436,11 @@ module tag_lookup_engine_table_lookups #(
   // perform_flushing_i // TODO implement
   assign done_flushing_o = 1'b1; // TODO implement
 
+  // Tie off unused leaf read port 1
+  assign leaf_read_req_valid_o[1] = 1'b0;
+  assign leaf_read_resp_ready_o[1] = 1'b0;
+  assign leaf_read_req_o[1] = '0;
+
   // root table management fsm
   tag_lookup_engine_root_init #(
     .tag_req_t(tag_req_t),
