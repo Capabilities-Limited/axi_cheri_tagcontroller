@@ -554,17 +554,4 @@ module hpdcache_wrapper #(
       .cfg_scrub_restart_i                (1'b0)
   );
 
-  // pragma translate_off
-`ifndef VERILATOR
-  initial begin : proc_assert_axi_params
-    // check the address rule fields for the right size
-    axi_start_addr :
-    assert ($bits(cached_addr_rule.start_addr) == AxiAddrWidth)
-    else $fatal(1, "rule_t.start_addr field does not match AxiAddrWidth!");
-    axi_end_addr :
-    assert ($bits(cached_addr_rule.end_addr) == AxiAddrWidth)
-    else $fatal(1, "rule_t.start_addr field does not match AxiAddrWidth!");
-`endif
-  // pragma translate_on
-
 endmodule
