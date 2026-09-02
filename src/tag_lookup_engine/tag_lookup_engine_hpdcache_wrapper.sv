@@ -546,7 +546,12 @@ module hpdcache_wrapper #(
       .cfg_prefetch_updt_plru_i           (1'b1),
       .cfg_error_on_cacheable_amo_i       (1'b0),
       .cfg_rtab_single_entry_i            (1'b0),
-      .cfg_default_wb_i                   (1'b0)
+      .cfg_default_wb_i                   (1'b0),
+      .mem_resp_read_inval_i              (1'b0),
+      .mem_resp_read_inval_nline_i        (1'b0),
+      .cfg_scrub_enable_i                 (1'b0),
+      .cfg_scrub_period_i                 (1'b0),
+      .cfg_scrub_restart_i                (1'b0)
   );
 
   // pragma translate_off
