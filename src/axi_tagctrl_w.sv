@@ -228,10 +228,17 @@ module axi_tagctrl_w #(
             w_chan_slv_ready_o = 1'b0;
           end
         end
-        if (w_chan_mst_o.last && (w_mst_fifo_pop || tagctrl_desc_q.illegal_req)) begin
+        if (w_chan_slv_ready_o && w_chan_slv_valid_i && w_chan_slv_i.last && tagctrl_desc_q.illegal_req) begin
+          state_d = WAIT_B_CHAN_RESP;
+          b_chan_slv_o = '0;
+          b_chan_slv_o.id = tagctrl_desc_q.a_x_id;
+          b_chan_slv_o.resp = tagctrl_desc_q.x_resp;
+          b_chan_slv_valid_o = 1'b1;
+          if (b_chan_slv_ready_i) state_d = IDLE;
+        end else if (w_chan_mst_o.last && w_mst_fifo_pop) begin
           state_d = WAIT_B_CHAN_RESP;
           b_chan_mst_ready_o = 1'b1;
-          tagc_resp_ready_o = 1'b1;
+          tagc_resp_ready_o = tagctrl_desc_q.tagged_req;
           if (b_chan_slv_ready_i && b_chan_mst_valid_i && (tagc_resp_valid_i || !tagctrl_desc_q.tagged_req)) begin
             state_d = IDLE;
             b_chan_slv_o = b_chan_mst_i;
@@ -256,27 +263,35 @@ module axi_tagctrl_w #(
         end
       end
       WAIT_B_CHAN_RESP: begin
-        b_chan_mst_ready_o = !mem_b_chan_valid_q;
-        tagc_resp_ready_o  = !tagc_b_chan_valid_q;
-        if (b_chan_mst_valid_i && !mem_b_chan_valid_q) begin
-          mem_b_chan_d = b_chan_mst_i;
-          en_mem_b_chan = 1'b1;
-          mem_b_chan_valid_d = 1'b1;
-          en_mem_b_chan_valid = 1'b1;
-        end
-        if (!tagctrl_desc_q.tagged_req || (tagc_resp_valid_i && !tagc_b_chan_valid_q)) begin
-          tagc_b_chan_d = tagc_resp_i;
-          en_tagc_b_chan = 1'b1;
-          tagc_b_chan_valid_d = 1'b1;
-          en_tagc_b_chan_valid = 1'b1;
-        end
-        if (mem_b_chan_valid_d && tagc_b_chan_valid_d) begin
-          state_d = IDLE;
-          b_chan_slv_o = mem_b_chan_d;
+        if (tagctrl_desc_q.illegal_req) begin
+          b_chan_slv_o = '0;
           b_chan_slv_o.id = tagctrl_desc_q.a_x_id;
-          if (tagctrl_desc_q.tagged_req && (tagc_b_chan_d.resp != axi_pkg::RESP_OKAY)) b_chan_slv_o.resp = tagc_b_chan_d.resp;
-          if (tagctrl_desc_q.x_resp != axi_pkg::RESP_OKAY) b_chan_slv_o.resp = tagctrl_desc_q.x_resp;
+          b_chan_slv_o.resp = tagctrl_desc_q.x_resp;
           b_chan_slv_valid_o = 1'b1;
+          if (b_chan_slv_ready_i) state_d = IDLE;
+        end else begin
+          b_chan_mst_ready_o = !mem_b_chan_valid_q;
+          tagc_resp_ready_o  = tagctrl_desc_q.tagged_req && !tagc_b_chan_valid_q;
+          if (b_chan_mst_valid_i && !mem_b_chan_valid_q) begin
+            mem_b_chan_d = b_chan_mst_i;
+            en_mem_b_chan = 1'b1;
+            mem_b_chan_valid_d = 1'b1;
+            en_mem_b_chan_valid = 1'b1;
+          end
+          if (!tagctrl_desc_q.tagged_req || (tagc_resp_valid_i && !tagc_b_chan_valid_q)) begin
+            tagc_b_chan_d = tagc_resp_i;
+            en_tagc_b_chan = 1'b1;
+            tagc_b_chan_valid_d = 1'b1;
+            en_tagc_b_chan_valid = 1'b1;
+          end
+          if (mem_b_chan_valid_d && tagc_b_chan_valid_d) begin
+            state_d = IDLE;
+            b_chan_slv_o = mem_b_chan_d;
+            b_chan_slv_o.id = tagctrl_desc_q.a_x_id;
+            if (tagctrl_desc_q.tagged_req && (tagc_b_chan_d.resp != axi_pkg::RESP_OKAY)) b_chan_slv_o.resp = tagc_b_chan_d.resp;
+            if (tagctrl_desc_q.x_resp != axi_pkg::RESP_OKAY) b_chan_slv_o.resp = tagctrl_desc_q.x_resp;
+            b_chan_slv_valid_o = 1'b1;
+          end
         end
       end
       // Go to Idle
