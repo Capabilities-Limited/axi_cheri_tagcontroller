@@ -48,6 +48,15 @@ static std::string dumpfile = "dump.vcd";
 static std::string covfile = "coverage.dat";
 #endif
 
+/////////////
+// helpers //
+///////////////////////////////////////////////////////////////////////////////
+
+static inline uint64_t get_cap_addr(uint64_t byte_addr) {
+  static const int shift = (int)std::abs(std::log2(Vtag_ctrl_testharness_tag_ctrl_testharness::CapSize / 8));
+  return byte_addr >> shift;
+}
+
 class CTagctrl_tb : public ::testing::Test
 {
 protected:
@@ -281,34 +290,35 @@ public:
     return r_beat;
   }
 
-  axi_ax_beat_t rand_ax_beat()
+  axi_ax_beat_t rand_ax_beat(uint64_t base, uint64_t length)
   {
     axi_ax_beat_t ax_beat;
     ax_beat.ax_id = rand() % (int)fabs((pow(2, Vtag_ctrl_testharness_tag_ctrl_testharness::AxiIdWidth)));
-    ax_beat.ax_addr = (rand() % Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemLength) + Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
-    // align to 4KiB
-    ax_beat.ax_addr = ax_beat.ax_addr & ~(4095);
-    //ax_beat.ax_len = (uint8_t)(0);
-    //ax_beat.ax_len = (uint8_t)(1);
-    ax_beat.ax_len = (uint8_t)(2);
-    //ax_beat.ax_len = (uint8_t)(7);
-    //ax_beat.ax_len = (uint8_t)(rand() % 255);
-    ax_beat.ax_size = 3; // always 64-bit for now
+
+    ax_beat.ax_addr = (rand() % length) + base;
+    ax_beat.ax_addr = ax_beat.ax_addr & ~static_cast<uint64_t>(0xfff);
+
+    if (ax_beat.ax_addr < base) {
+      ax_beat.ax_addr = (base + 4095) & ~static_cast<uint64_t>(0xfff);
+    }
+
+    ax_beat.ax_len = (uint8_t)(2); // Hardcoded 3 beats (len=2) matching your original test
+    ax_beat.ax_size = 3; // Always 64-bit for now
     ax_beat.ax_burst = BURST_INCR;
     ax_beat.ax_user = 0;
     return ax_beat;
   }
-  axi_w_beat_t rand_w_beat(int last)
+
+  axi_w_beat_t rand_w_beat(int last, uint64_t base, uint64_t length)
   {
     axi_w_beat_t w_beat;
     w_beat.w_strb = 0xff;
-    w_beat.w_data = (rand() % Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemLength) + Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
+    w_beat.w_data = (rand() % length) + base;
     w_beat.w_user = rand() % 2;
     w_beat.w_last = last;
     return w_beat;
   }
 
-  // conf
   void reset_cfg_slave()
   {
     dut->cfg_aw_addr = 0;
@@ -394,7 +404,169 @@ public:
 
     return r_data;
   }
+
+  bool wait_for_status_bit(uint8_t bit_index, bool expected_val = true, int max_polls = 100, int tick_interval = 10)
+  {
+    for (int timeout = 0; timeout < max_polls; timeout++) {
+      uint64_t status = send_cfg_read(0x000);
+      bool bit_state = (status >> bit_index) & 0x1;
+      if (bit_state == expected_val) {
+        return true;
+      }
+      tb->tick(tick_interval);
+    }
+    return false;
+  }
+
+  void wait_and_clear(vluint8_t& valid_sig, const vluint8_t& ready_sig) {
+    valid_sig = 1;
+    while (ready_sig != 1) {
+      tb->tick(1);
+    }
+    tb->tick(1);
+    valid_sig = 0;
+  }
+
 };
+
+void run_rand_rw_sequence(
+  CTagCtrlDriver_tb* driver,
+  uint64_t base,
+  uint64_t length,
+  bool expect_user_tag = true,
+  uint64_t num_reps = MAX_NUM_REPS)
+{
+  std::deque<axi_w_beat_t> axi_w_beat_q;
+
+  for (uint64_t rep = 0; rep < num_reps; rep++) {
+    axi_ax_beat_t aw_beat = driver->rand_ax_beat(base, length);
+    axi_ax_beat_t ar_beat = aw_beat;
+
+    driver->reset_slave();
+    driver->send_aw(aw_beat);
+
+    axi_w_beat_t last_w_beat;
+    uint8_t len = aw_beat.ax_len;
+
+    for (uint64_t i = 0; i <= len; i++) {
+      bool last = (i == len);
+      axi_w_beat_t w_beat = driver->rand_w_beat(last, base, length);
+
+      uint64_t addr = get_cap_addr(aw_beat.ax_addr + i * 8);
+      uint64_t last_addr = get_cap_addr(aw_beat.ax_addr + (i > 0 ? (i - 1) * 8 : 0));
+
+      if (i > 0 && last_addr == addr) {
+        w_beat.w_user = last_w_beat.w_user;
+      }
+
+      driver->send_w(w_beat);
+      axi_w_beat_q.push_back(w_beat);
+      last_w_beat = w_beat;
+    }
+
+    axi_b_beat_t b_beat = driver->recv_b();
+    ASSERT_EQ(b_beat.b_id, aw_beat.ax_id);
+    ASSERT_EQ(b_beat.b_resp, RESP_OKAY);
+
+    driver->send_ar(ar_beat);
+
+    for (uint64_t i = 0; i <= len; i++) {
+      axi_r_beat_t r_beat = driver->recv_r();
+      axi_w_beat_t exp_w_beat = axi_w_beat_q.front();
+      axi_w_beat_q.pop_front();
+
+      ASSERT_EQ(r_beat.r_id, ar_beat.ax_id);
+      ASSERT_EQ(r_beat.r_data, exp_w_beat.w_data);
+      ASSERT_EQ(r_beat.r_resp, RESP_OKAY);
+      ASSERT_EQ(r_beat.r_last, (i == len) ? 1 : 0);
+
+      uint8_t expected_user = expect_user_tag ? exp_w_beat.w_user : 0;
+      ASSERT_EQ(r_beat.r_user, expected_user);
+    }
+  }
+}
+
+///////////
+// tests //
+///////////////////////////////////////////////////////////////////////////////
+
+TEST_F(CTagctrl_tb, Rand_AXI_RW_OP)
+{
+  CTagCtrlDriver_tb *driver = new CTagCtrlDriver_tb(top, this);
+  tick(2500);
+
+  // Pulling base and length configurations directly from the harness layout definitions
+  uint64_t base = Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemBase;
+  uint64_t length = Vtag_ctrl_testharness_tag_ctrl_testharness::DRAMMemLength;
+
+  // Correctly passing all required parameters to the sequence helper
+  run_rand_rw_sequence(driver, base, length);
+
+  delete driver;
+}
+
+TEST_F(CTagctrl_tb, Config_Interface_Full_Cycle)
+{
+  CTagCtrlDriver_tb *driver = new CTagCtrlDriver_tb(top, this);
+
+  // Initialize and reset interfaces
+  driver->reset_slave();
+  driver->reset_cfg_slave();
+  tick(20);
+
+  // Assert initially in Zeroing state (Bit 1)
+  uint64_t status = driver->send_cfg_read(0x000);
+  bool zeroing = (status >> 1) & 0x1;
+  ASSERT_TRUE(zeroing);
+
+  // Wait until device progresses into Serving state (Bit 0)
+  ASSERT_TRUE(driver->wait_for_status_bit(0 /* serving */))
+    << "Timeout waiting for FSM to enter SERVING state during initial boot.";
+
+  // Issue "stop" sequence command path via configuration register
+  driver->send_cfg_write(0x008, 0x10000);
+  tick(1);
+
+  // Wait for design to reach Unconfigured state (Bit 3)
+  ASSERT_TRUE(driver->wait_for_status_bit(3 /*unconfigured */))
+    << "Timeout waiting for FSM to return to UNCONFIGURED state.";
+
+  // Setup addressing layouts constraints
+  uint64_t exp_base = 0x00004000; // Aligned with COVERED_ALIGN (8192)
+  uint64_t exp_top  = 0x00008000; // Aligned with COVERED_ALIGN (8192)
+  uint64_t exp_tbl  = 0x00000100; // Aligned with TAG_STORE_ALIGN (64)
+
+  driver->send_cfg_write(0x010, exp_base);
+  driver->send_cfg_write(0x018, exp_top);
+  driver->send_cfg_write(0x020, exp_tbl);
+
+  // Verify configurations were accurately captured
+  ASSERT_EQ(driver->send_cfg_read(0x010), exp_base);
+  ASSERT_EQ(driver->send_cfg_read(0x018), exp_top);
+  ASSERT_EQ(driver->send_cfg_read(0x020), exp_tbl);
+
+  // Verify no layout tracking errors are flagged (Bits 23:16)
+  status = driver->send_cfg_read(0x000);
+  uint8_t error_field = (status >> 16) & 0xFF;
+  ASSERT_EQ(error_field, 0);
+
+  // Trigger "start" command sequence path
+  driver->send_cfg_write(0x008, 0x1);
+  tick(1);
+
+  // Wait until active cycle moves through Zeroing state and back into Serving
+  ASSERT_TRUE(driver->wait_for_status_bit(1 /* zeroing */))
+    << "Timeout waiting for FSM to enter ZEROING state.";
+
+  ASSERT_TRUE(driver->wait_for_status_bit(0 /* serving */))
+    << "Timeout waiting for FSM to enter SERVING state.";
+
+  delete driver;
+}
+
+//////////////////////
+// main entry point //
+////////////////////////////////////////////////////////////////////////////////
 
 static void usage(const char *program_name)
 {
@@ -406,156 +578,6 @@ static void usage(const char *program_name)
   -v,                      Write vcd trace to FILE\n\
   ",
         stdout);
-}
-
-TEST_F(CTagctrl_tb, Rand_AXI_RW_OP)
-{
-  CTagCtrlDriver_tb *driver = new CTagCtrlDriver_tb(top, this);
-  axi_ax_beat_t aw_beat;
-  axi_ax_beat_t ar_beat;
-  axi_w_beat_t w_beat, last_w_beat;
-  axi_r_beat_t r_beat;
-  axi_b_beat_t b_beat;
-  std::deque<axi_w_beat_t> axi_w_beat_q;
-  tick(2500);
-  for (uint64_t i = 0; i < MAX_NUM_REPS; i++)
-  {
-    // Generate random aw beat and ar beat
-    aw_beat = driver->rand_ax_beat();
-    ar_beat = aw_beat;
-    // Reset CPU slave interface
-    driver->reset_slave();
-    // Send aw beat
-    driver->send_aw(aw_beat);
-    int last = 0;
-    uint8_t len = aw_beat.ax_len;
-    uint64_t addr = 0;
-    uint64_t last_addr = 0;
-    for (uint64_t i = 0; i <= len; i++)
-    {
-      // Check if it is the last beat
-      last = (i == len) ? 1 : 0;
-      // Generate a random write beat
-      w_beat = driver->rand_w_beat(last);
-      // compute beat address
-      addr = (aw_beat.ax_addr + i * 8) >> (int)fabs(log2(Vtag_ctrl_testharness_tag_ctrl_testharness::CapSize / 8));
-      // Store last beat address
-      if (i == 0)
-        last_addr = aw_beat.ax_addr;
-      else
-        last_addr = (aw_beat.ax_addr + (i - 1) * 8) >> (int)fabs(log2(Vtag_ctrl_testharness_tag_ctrl_testharness::CapSize / 8));
-      // Check if this beat + the last form a 128-bit data value
-      // if so the user value or the capability bit should be the same
-      if (last_addr == addr)
-        w_beat.w_user = last_w_beat.w_user;
-      driver->send_w(w_beat);
-      axi_w_beat_q.push_back(w_beat);
-      last_w_beat = w_beat;
-    }
-    // Receive the b response
-    b_beat = driver->recv_b();
-    // Assert if the transaction ID is correct
-    ASSERT_EQ(b_beat.b_id, aw_beat.ax_id);
-    // Assert if we got a OKAY response
-    ASSERT_EQ(b_beat.b_resp, RESP_OKAY);
-    driver->send_ar(ar_beat);
-    for (uint64_t i = 0; i <= len; i++)
-    {
-      r_beat = driver->recv_r();
-      ASSERT_EQ(r_beat.r_id, ar_beat.ax_id);
-      // Get the write beat to perform the assertion
-      w_beat = axi_w_beat_q.front();
-      axi_w_beat_q.pop_front();
-      ASSERT_EQ(r_beat.r_data, w_beat.w_data);
-      ASSERT_EQ(r_beat.r_resp, RESP_OKAY);
-      if (i == len)
-        ASSERT_EQ(r_beat.r_last, 1);
-      else
-        ASSERT_EQ(r_beat.r_last, 0);
-      ASSERT_EQ(r_beat.r_user, w_beat.w_user);
-    }
-  }
-  delete driver;
-}
-
-TEST_F(CTagctrl_tb, Config_Interface_Full_Cycle)
-{
-  CTagCtrlDriver_tb *driver = new CTagCtrlDriver_tb(top, this);
-
-  // reset
-  driver->reset_slave();
-  driver->reset_cfg_slave();
-  tick(20);
-
-  // init_start == 1'b1 so reset in Zeroing -> Serving
-  uint64_t status = driver->send_cfg_read(0x000);
-  bool zeroing = (status >> 1) & 0x1;
-  ASSERT_TRUE(zeroing);
-  // wait until in serving
-  while (!(driver->send_cfg_read(0x000) & 0x1)) tick(10);
-  status = driver->send_cfg_read(0x000);
-  bool serving = status & 0x1;
-  ASSERT_TRUE(serving);
-
-  // test "stop" path
-  driver->send_cfg_write(0x008, 0x10000);
-  tick(1);
-
-  bool unconfigured = false;
-  for (int timeout = 0; timeout < 1000; timeout++)
-  {
-    status = driver->send_cfg_read(0x000);
-    unconfigured = (status >> 3) & 0x1;
-    if (unconfigured)
-      break;
-    tick(20);
-  }
-  ASSERT_TRUE(unconfigured) << "Timeout waiting for FSM to return to UNCONFIGURED state.";
-
-  // setup a configuration
-  uint64_t exp_base = 0x00004000; // Aligned with COVERED_ALIGN (8192)
-  uint64_t exp_top  = 0x00008000; // Aligned with COVERED_ALIGN (8192)
-  uint64_t exp_tbl  = 0x00000100; // Aligned with TAG_STORE_ALIGN (64)
-
-  driver->send_cfg_write(0x010, exp_base);
-  driver->send_cfg_write(0x018, exp_top);
-  driver->send_cfg_write(0x020, exp_tbl);
-
-  ASSERT_EQ(driver->send_cfg_read(0x010), exp_base);
-  ASSERT_EQ(driver->send_cfg_read(0x018), exp_top);
-  ASSERT_EQ(driver->send_cfg_read(0x020), exp_tbl);
-
-  status = driver->send_cfg_read(0x000);
-  uint8_t error_field = (status >> 16) & 0xFF;
-  ASSERT_EQ(error_field, 0);
-
-  // test "start" path
-  driver->send_cfg_write(0x008, 0x1);
-  tick(1);
-
-  zeroing = false;
-  for (int timeout = 0; timeout < 100; timeout++)
-  {
-    status = driver->send_cfg_read(0x000);
-    zeroing = (status >> 1) & 0x1;
-    if (zeroing)
-      break;
-    tick(10);
-  }
-  ASSERT_TRUE(zeroing) << "Timeout waiting for FSM to enter ZEROING state.";
-
-  serving = false;
-  for (int timeout = 0; timeout < 100; timeout++)
-  {
-    status = driver->send_cfg_read(0x000);
-    serving = status & 0x1;
-    if (serving)
-      break;
-    tick(10);
-  }
-  ASSERT_TRUE(serving) << "Timeout waiting for FSM to enter SERVING state.";
-
-  delete driver;
 }
 
 int main(int argc, char **argv)
