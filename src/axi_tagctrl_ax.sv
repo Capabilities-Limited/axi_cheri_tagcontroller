@@ -192,6 +192,7 @@ module axi_tagctrl_ax #(
             a_x_len: ax_chan_slv_i.len,
             a_x_size: ax_chan_slv_i.size,
             x_last: 1'b1,
+            illegal_req: illegal_req,
             tagged_req: tagged_req,
             default: '0
         };
