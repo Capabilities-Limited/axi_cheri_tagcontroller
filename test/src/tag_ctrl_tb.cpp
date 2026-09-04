@@ -434,6 +434,8 @@ void run_rand_rw_sequence(
   uint64_t base,
   uint64_t length,
   bool expect_user_tag = true,
+  axi_resp_t expected_b_resp = RESP_OKAY,
+  axi_resp_t expected_r_resp = RESP_OKAY,
   uint64_t num_reps = MAX_NUM_REPS)
 {
   std::deque<axi_w_beat_t> axi_w_beat_q;
@@ -466,7 +468,7 @@ void run_rand_rw_sequence(
 
     axi_b_beat_t b_beat = driver->recv_b();
     ASSERT_EQ(b_beat.b_id, aw_beat.ax_id);
-    ASSERT_EQ(b_beat.b_resp, RESP_OKAY);
+    ASSERT_EQ(b_beat.b_resp, expected_b_resp);
 
     driver->send_ar(ar_beat);
 
@@ -476,8 +478,8 @@ void run_rand_rw_sequence(
       axi_w_beat_q.pop_front();
 
       ASSERT_EQ(r_beat.r_id, ar_beat.ax_id);
-      ASSERT_EQ(r_beat.r_data, exp_w_beat.w_data);
-      ASSERT_EQ(r_beat.r_resp, RESP_OKAY);
+      if (expected_r_resp == RESP_OKAY) ASSERT_EQ(r_beat.r_data, exp_w_beat.w_data);
+      ASSERT_EQ(r_beat.r_resp, expected_r_resp);
       ASSERT_EQ(r_beat.r_last, (i == len) ? 1 : 0);
 
       uint8_t expected_user = expect_user_tag ? exp_w_beat.w_user : 0;
@@ -560,6 +562,53 @@ TEST_F(CTagctrl_tb, Config_Interface_Full_Cycle)
 
   ASSERT_TRUE(driver->wait_for_status_bit(0 /* serving */))
     << "Timeout waiting for FSM to enter SERVING state.";
+
+  delete driver;
+}
+
+TEST_F(CTagctrl_tb, TagStore_Aliasing_Access)
+{
+  CTagCtrlDriver_tb *driver = new CTagCtrlDriver_tb(top, this);
+
+  // Initialize and reset interfaces
+  driver->reset_slave();
+  driver->reset_cfg_slave();
+  tick(20);
+
+  // Wait until device progresses into Serving state (Bit 0)
+  ASSERT_TRUE(driver->wait_for_status_bit(0 /* serving */))
+    << "Timeout waiting for FSM to enter SERVING state during initial boot.";
+
+  driver->send_cfg_write(0x008, 0x10000); // stop command
+  tick(1);
+  ASSERT_TRUE(driver->wait_for_status_bit(3 /* unconfigured */));
+
+  uint64_t small_base  = 0x00004000;
+  uint64_t small_top   = 0x00006000; // base + 8192 bytes
+  uint64_t tag_tbl_ptr = 0x00001000; // Lower internal tag storage base pointer
+
+  driver->send_cfg_write(0x010, small_base);
+  driver->send_cfg_write(0x018, small_top);
+  driver->send_cfg_write(0x020, tag_tbl_ptr);
+
+  driver->send_cfg_write(0x008, 0x1); // Start command
+  ASSERT_TRUE(driver->wait_for_status_bit(/*SERVING_BIT=*/0, true, 200, 10))
+    << "FSM failed to reach SERVING state for small range.";
+
+  uint64_t alias_base   = tag_tbl_ptr;
+  uint64_t alias_length = 4096;
+  uint64_t num_reps     = 10;
+
+  run_rand_rw_sequence( driver, alias_base, alias_length
+                      , false // expect_user_tag
+		      , RESP_DECERR // expected_b_resp
+		      , RESP_DECERR // expected_r_resp
+                      , num_reps
+  );
+
+  uint64_t status = driver->send_cfg_read(0x000);
+  bool still_serving = status & 0x1;
+  ASSERT_TRUE(still_serving) << "Hardware state machine crashed on automated aliased tag store fuzzing sequence.";
 
   delete driver;
 }
