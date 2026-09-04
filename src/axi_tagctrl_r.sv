@@ -101,9 +101,16 @@ module axi_tagctrl_r #(
         get_tags();
       end
       SEND_R_CHANNEL: begin
+        // To track number of response flits, decrement the a_x_len field.
+        // Should align with the mem fifo data last field, but needed for the
+        // illegal_req case.
+        automatic logic last = tagctrl_desc_q.a_x_len == 0;
         if (tagc_inp_r_valid_q && (!mem_fifo_empty || tagctrl_desc_q.illegal_req)) begin
           r_chan_slv_valid_o = 1'b1;
-          mem_fifo_pop = r_chan_slv_ready_i & !tagctrl_desc_q.illegal_req;
+          if (r_chan_slv_ready_i) begin
+            mem_fifo_pop = !tagctrl_desc_q.illegal_req;
+            tagctrl_desc_d.a_x_len = tagctrl_desc_q.a_x_len - 1;
+          end
           // update the address
           tagctrl_desc_d.a_x_addr = axi_pkg::aligned_addr(
             tagctrl_desc_q.a_x_addr + axi_pkg::num_bytes(
@@ -117,15 +124,17 @@ module axi_tagctrl_r #(
           r_chan_slv_o.id = tagctrl_desc_q.a_x_id;
           // set user field with the tag bit
           r_chan_slv_o.user = (tagc_inp_r_q.data >> tag_bit_ind) & 1;
+          // set last field as appropriate
+          r_chan_slv_o.last = last;
           // override resp field if required
           if (tagctrl_desc_q.x_resp != axi_pkg::RESP_OKAY) r_chan_slv_o.resp = tagctrl_desc_q.x_resp;
           // load more tags if needed
           if ((tag_bit_ind == (Cfg.AxiDataWidth - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
                   Cfg.CapSize/8
-              )] == 0) && !mem_fifo_data.last && r_chan_slv_ready_i) begin
+              )] == 0) && !last && r_chan_slv_ready_i) begin
             get_tags();
           end
-          if (mem_fifo_data.last && r_chan_slv_ready_i) begin
+          if (last && r_chan_slv_ready_i) begin
             load_new_desc();
             get_tags();
           end
