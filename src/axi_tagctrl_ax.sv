@@ -157,7 +157,7 @@ module axi_tagctrl_ax #(
             a_x_len: 0,
             a_x_size: 0, // Supports 8 tag bits or less
             a_x_burst: axi_pkg::BURST_INCR,
-            x_resp: illegal_req ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY,
+            x_resp: illegal_req ? axi_pkg::RESP_DECERR : axi_pkg::RESP_OKAY,
             x_last: 1'b1,
             default: '0
         };
@@ -192,6 +192,7 @@ module axi_tagctrl_ax #(
             a_x_len: ax_chan_slv_i.len,
             a_x_size: ax_chan_slv_i.size,
             x_last: 1'b1,
+            x_resp: illegal_req ? axi_pkg::RESP_DECERR : axi_pkg::RESP_OKAY,
             illegal_req: illegal_req,
             tagged_req: tagged_req,
             default: '0
