@@ -743,6 +743,23 @@ TEST_F(CTagctrl_tb, TagStore_Aliasing_Access)
   ASSERT_EQ(user_after, 0)
     << "Rejected tag-store write unexpectedly changed the data user field.";
 
+  // check locking interface works
+  uint64_t original_value = driver->send_cfg_read(0x10);
+  // stop then config
+  driver->send_cfg_write(0x008, 0x10000);
+  tick(1);
+  ASSERT_TRUE(driver->wait_for_status_bit(3 /*unconfigured */))
+    << "Timeout waiting for FSM to return to UNCONFIGURED state.";
+  tick(1);
+  driver->send_cfg_write(0x08, 0x01000000); // lock
+  driver->send_cfg_write(0x10, 0xDEADBEEF); // unsuccessful conf update
+  uint64_t value_after_write = driver->send_cfg_read(0x10);
+
+  ASSERT_EQ(value_after_write, original_value)
+    << "Configuration register changed after config interface was locked. "
+    << "Original: 0x" << std::hex << original_value
+    << ", after write: 0x" << std::hex << value_after_write;
+
   delete driver;
 }
 
