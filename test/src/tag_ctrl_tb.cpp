@@ -290,6 +290,118 @@ public:
     return r_beat;
   }
 
+  void send_write(uint64_t addr,
+                  uint64_t data, // upper 64 bit 0
+                  uint8_t user = 0,
+                  axi_resp_t expected_resp = RESP_OKAY)
+  {
+    dut->cpu_aw_id    = 0;
+    dut->cpu_aw_addr  = addr;
+    dut->cpu_aw_len   = 0;
+    dut->cpu_aw_size  = 4;
+    dut->cpu_aw_burst = BURST_INCR;
+    dut->cpu_aw_user  = user;
+    dut->cpu_aw_valid = 1;
+
+    dut->eval();
+
+    while (dut->cpu_aw_ready != 1)
+      tb->tick(1);
+
+    tb->tick(1);
+
+    dut->cpu_aw_valid = 0;
+    dut->cpu_aw_id    = 0;
+    dut->cpu_aw_addr  = 0;
+    dut->cpu_aw_len   = 0;
+    dut->cpu_aw_size  = 0;
+    dut->cpu_aw_burst = 0;
+    dut->cpu_aw_user  = 0;
+
+
+    dut->cpu_w_data = 0;
+    dut->cpu_w_data = data;
+
+    dut->cpu_w_strb = 0xffff;
+    dut->cpu_w_last = 1;
+    dut->cpu_w_user = user;
+    dut->cpu_w_valid = 1;
+
+    dut->eval();
+
+    while (dut->cpu_w_ready != 1)
+      tb->tick(1);
+
+    tb->tick(1);
+
+    dut->cpu_w_valid = 0;
+    dut->cpu_w_data  = 0;
+    dut->cpu_w_strb  = 0;
+    dut->cpu_w_last  = 0;
+    dut->cpu_w_user  = 0;
+
+    dut->cpu_b_ready = 1;
+
+    while (dut->cpu_b_valid != 1)
+      tb->tick(1);
+
+    EXPECT_EQ(dut->cpu_b_id, 0);
+    EXPECT_EQ(static_cast<axi_resp_t>(dut->cpu_b_resp),
+              expected_resp);
+
+    tb->tick(1);
+
+    dut->cpu_b_ready = 0;
+  }
+
+
+  std::tuple<uint64_t, uint8_t, axi_resp_t>
+  send_read(uint64_t addr)
+  {
+
+    dut->cpu_ar_id    = 0;
+    dut->cpu_ar_addr  = addr;
+    dut->cpu_ar_len   = 0;
+    dut->cpu_ar_size  = 4;
+    dut->cpu_ar_burst = BURST_INCR;
+    dut->cpu_ar_user  = 0;
+    dut->cpu_ar_valid = 1;
+
+    dut->eval();
+
+    while (dut->cpu_ar_ready != 1)
+      tb->tick(1);
+
+    tb->tick(1);
+
+    dut->cpu_ar_valid = 0;
+    dut->cpu_ar_id    = 0;
+    dut->cpu_ar_addr  = 0;
+    dut->cpu_ar_len   = 0;
+    dut->cpu_ar_size  = 0;
+    dut->cpu_ar_burst = 0;
+    dut->cpu_ar_user  = 0;
+
+    dut->cpu_r_ready = 1;
+
+    while (dut->cpu_r_valid != 1)
+      tb->tick(1);
+
+    uint64_t r_data = dut->cpu_r_data;
+    uint8_t r_user = dut->cpu_r_user;
+    axi_resp_t r_resp =
+        static_cast<axi_resp_t>(dut->cpu_r_resp);
+
+    EXPECT_EQ(dut->cpu_r_id, 0);
+    EXPECT_EQ(dut->cpu_r_last, 1);
+
+    tb->tick(1);
+
+    dut->cpu_r_ready = 0;
+
+    return {r_data, r_user, r_resp};
+  }
+
   axi_ax_beat_t rand_ax_beat(uint64_t base, uint64_t length)
   {
     axi_ax_beat_t ax_beat;
@@ -609,6 +721,27 @@ TEST_F(CTagctrl_tb, TagStore_Aliasing_Access)
   uint64_t status = driver->send_cfg_read(0x000);
   bool still_serving = status & 0x1;
   ASSERT_TRUE(still_serving) << "Hardware state machine crashed on automated aliased tag store fuzzing sequence.";
+
+  // specifically try to forge a tag
+
+  // initial untagged write
+  uint64_t data_addr = small_base;
+  driver->send_write(data_addr, 0xDEADBEEF, /*user=*/0, RESP_OKAY); // untagged
+  auto [data_before, user_before, resp_before] = driver->send_read(data_addr);
+  ASSERT_EQ(resp_before, RESP_OKAY);
+  ASSERT_EQ(user_before, 0)
+    << "Initial data write unexpectedly has a non-zero user field.";
+
+  // corresponding tag-store address and forging attempt
+  uint64_t tag_base = driver->send_cfg_read(0x020);
+  uint64_t tag_addr = tag_base + ((data_addr - small_base) >> 4);
+  driver->send_write(tag_addr, 0x1, /*user=*/0, RESP_DECERR);
+
+  // verify forging did not happen
+  auto [data_after, user_after, resp_after] = driver->send_read(data_addr);
+  ASSERT_EQ(resp_after, RESP_OKAY);
+  ASSERT_EQ(user_after, 0)
+    << "Rejected tag-store write unexpectedly changed the data user field.";
 
   delete driver;
 }
