@@ -267,12 +267,13 @@ module axi_tagctrl_config #(
       write_resp_d.resp = axi_pkg::RESP_OKAY;
       write_resp_d.user = '0;
       // when write is not ignored, perform desired effect
-      if (accept) begin
+      if (!locked_q && accept) begin
         case (slv_req_i.aw.addr[11:0])
           12'h008: begin
             if (do_start) cmd_start = 1'b1;
             else if (do_resume) cmd_resume = 1'b1;
             else if (do_stop) cmd_stop = 1'b1;
+            if (do_lock) locked_d = 1'b1;
           end
           12'h010: begin
             covered_base_d = slv_req_i.w.data & bit_strb;
