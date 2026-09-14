@@ -308,13 +308,13 @@ module tag_ctrl_testharness #(
   ) i_axi_tagctrl_top (
       .clk_i,
       .rst_ni,
-      .test_i         (1'b0),
-      .cfg_slv_req_i  (axi_cfg_req),
-      .cfg_slv_resp_o (axi_cfg_res),
-      .slv_req_i      (axi_cpu_req),
-      .slv_resp_o     (axi_cpu_res),
-      .mst_req_o      (axi_mem_req),
-      .mst_resp_i     (axi_mem_res)
+      .test_i              (1'b0),
+      .config_sub_req_i    (axi_cfg_req),
+      .config_sub_resp_o   (axi_cfg_res),
+      .tagged_sub_req_i    (axi_cpu_req),
+      .tagged_sub_resp_o   (axi_cpu_res),
+      .untagged_mgr_req_o  (axi_mem_req),
+      .untagged_mgr_resp_i (axi_mem_res)
   );
 
   /*   AXI_BUS #(

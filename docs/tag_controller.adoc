@@ -174,7 +174,7 @@ table.
 
 | Interface Name | Role | Data Width | Address Width | Description
 
-| cfg_slv_{req_i, resp_o}
+| config_sub_{req_i, resp_o}
 | AXI subordinate
 | 64-bit
 | 64-bit
@@ -185,7 +185,7 @@ of the tag controller is not required, the user of the tag controller can tie
 all valid bits on the incoming AXI low, and configure the tag table via static
 module parameters, with the {init_locked} value set high.
 
-| slv_{req_i, resp_o}
+| tagged_sub_{req_i, resp_o}
 | AXI subordinate
 | 64-bit
 | 64-bit
@@ -195,7 +195,7 @@ Incoming accesses from the tagged domain. Typically connected to the manager
 port of the data cache of the CPU. Capability tags are tracked in the user
 fields of the data channels.
 
-| mst_{req_o, resp_i}
+| untagged_mgr_{req_o, resp_i}
 | AXI manager
 | 64-bit
 | 64-bit
