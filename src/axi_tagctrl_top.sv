@@ -63,17 +63,17 @@ module axi_tagctrl_top #(
     /// Test mode activate, active high.
     input logic test_i,
     /// AXI4 slave port conf. request
-    input slv_req_t cfg_slv_req_i,
+    input slv_req_t config_sub_req_i,
     /// AXI4 slave port conf. response
-    output slv_resp_t cfg_slv_resp_o,
+    output slv_resp_t config_sub_resp_o,
     /// AXI4+ATOP slave port request, CPU side
-    input slv_req_t slv_req_i,
+    input slv_req_t tagged_sub_req_i,
     /// AXI4+ATOP slave port response, CPU side
-    output slv_resp_t slv_resp_o,
+    output slv_resp_t tagged_sub_resp_o,
     /// AXI4+ATOP master port request, memory side
-    output mst_req_t mst_req_o,
+    output mst_req_t untagged_mgr_req_o,
     /// AXI4+ATOP master port response, memory side
-    input mst_resp_t mst_resp_i
+    input mst_resp_t untagged_mgr_resp_i
 );
   `include "axi/typedef.svh"
 
@@ -206,8 +206,8 @@ module axi_tagctrl_top #(
     .clk_i(clk_i),
     .rst_ni(rst_ni),
 
-    .slv_req_i(cfg_slv_req_i),
-    .slv_resp_o(cfg_slv_resp_o),
+    .slv_req_i(config_sub_req_i),
+    .slv_resp_o(config_sub_resp_o),
 
     // signaling
     .isolate_o(isolate),
@@ -488,8 +488,8 @@ module axi_tagctrl_top #(
       .test_i     (test_i),
       .slv_reqs_i ({tagc_req, tagctrl_req}),
       .slv_resps_o({tagc_resp, tagctrl_resp}),
-      .mst_req_o  (mst_req_o),
-      .mst_resp_i (mst_resp_i)
+      .mst_req_o  (untagged_mgr_req_o),
+      .mst_resp_i (untagged_mgr_resp_i)
   );
 
   slv_req_t  slv_req_cut;
@@ -507,8 +507,8 @@ module axi_tagctrl_top #(
   ) i_axi_cut (
       .clk_i,
       .rst_ni,
-      .slv_req_i (slv_req_i),
-      .slv_resp_o(slv_resp_o),
+      .slv_req_i (tagged_sub_req_i),
+      .slv_resp_o(tagged_sub_resp_o),
       .mst_req_o (slv_req_cut),
       .mst_resp_i(slv_resp_cut)
   );
@@ -546,74 +546,74 @@ module axi_tagctrl_top #(
 
     // check the structs against the Cfg
     assert_slv_aw_id :
-    assert ($bits(slv_req_i.aw.id) == axi_id_width)
+    assert ($bits(tagged_sub_req_i.aw.id) == axi_id_width)
     else $fatal(1, $sformatf("llc> AXI Slave port, AW ID width not equal to axi_id_width"));
     assert_slv_aw_addr :
-    assert ($bits(slv_req_i.aw.addr) == axi_addr_width)
+    assert ($bits(tagged_sub_req_i.aw.addr) == axi_addr_width)
     else $fatal(1, $sformatf("llc> AXI Slave port, AW ADDR width not equal to axi_addr_width"));
     assert_slv_ar_id :
-    assert ($bits(slv_req_i.ar.id) == axi_id_width)
+    assert ($bits(tagged_sub_req_i.ar.id) == axi_id_width)
     else $fatal(1, $sformatf("llc> AXI Slave port, AR ID width not equal to axi_id_width"));
     assert_slv_ar_addr :
-    assert ($bits(slv_req_i.ar.addr) == axi_addr_width)
+    assert ($bits(tagged_sub_req_i.ar.addr) == axi_addr_width)
     else $fatal(1, $sformatf("llc> AXI Slave port, AR ADDR width not equal to axi_addr_width"));
     assert_slv_w_data :
-    assert ($bits(slv_req_i.w.data) == axi_data_width)
+    assert ($bits(tagged_sub_req_i.w.data) == axi_data_width)
     else $fatal(1, $sformatf("llc> AXI Slave port, W DATA width not equal to axi_data_width"));
     assert_slv_r_data :
-    assert ($bits(slv_resp_o.r.data) == axi_data_width)
+    assert ($bits(tagged_sub_resp_o.r.data) == axi_data_width)
     else $fatal(1, $sformatf("llc> AXI Slave port, R DATA width not equal to axi_data_width"));
     // compare the types against the structs
     assert_slv_req_aw :
-    assert ($bits(slv_aw_chan_t) == $bits(slv_req_i.aw))
-    else $fatal(1, $sformatf("llc> AXI Slave port, slv_aw_chan_t and slv_req_i.aw not equal"));
+    assert ($bits(slv_aw_chan_t) == $bits(tagged_sub_req_i.aw))
+    else $fatal(1, $sformatf("llc> AXI Slave port, slv_aw_chan_t and tagged_sub_req_i.aw not equal"));
     assert_slv_req_w :
-    assert ($bits(w_chan_t) == $bits(slv_req_i.w))
-    else $fatal(1, $sformatf("llc> AXI Slave port, w_chan_t and slv_req_i.w not equal"));
+    assert ($bits(w_chan_t) == $bits(tagged_sub_req_i.w))
+    else $fatal(1, $sformatf("llc> AXI Slave port, w_chan_t and tagged_sub_req_i.w not equal"));
     assert_slv_req_b :
-    assert ($bits(slv_b_chan_t) == $bits(slv_resp_o.b))
-    else $fatal(1, $sformatf("llc> AXI Slave port, slv_b_chan_t and slv_resp_o.b not equal"));
+    assert ($bits(slv_b_chan_t) == $bits(tagged_sub_resp_o.b))
+    else $fatal(1, $sformatf("llc> AXI Slave port, slv_b_chan_t and tagged_sub_resp_o.b not equal"));
     assert_slv_req_ar :
-    assert ($bits(slv_ar_chan_t) == $bits(slv_req_i.ar))
-    else $fatal(1, $sformatf("llc> AXI Slave port, slv_ar_chan_t and slv_req_i.ar not equal"));
+    assert ($bits(slv_ar_chan_t) == $bits(tagged_sub_req_i.ar))
+    else $fatal(1, $sformatf("llc> AXI Slave port, slv_ar_chan_t and tagged_sub_req_i.ar not equal"));
     assert_slv_req_r :
-    assert ($bits(slv_r_chan_t) == $bits(slv_resp_o.r))
-    else $fatal(1, $sformatf("llc> AXI Slave port, slv_r_chan_t and slv_resp_o.r not equal"));
+    assert ($bits(slv_r_chan_t) == $bits(tagged_sub_resp_o.r))
+    else $fatal(1, $sformatf("llc> AXI Slave port, slv_r_chan_t and tagged_sub_resp_o.r not equal"));
     // check the structs against the Cfg
     assert_mst_aw_id :
-    assert ($bits(mst_req_o.aw.id) == axi_id_width + 1)
+    assert ($bits(untagged_mgr_req_o.aw.id) == axi_id_width + 1)
     else $fatal(1, $sformatf("llc> AXI Master port, AW ID not equal to axi_id_width + 1"));
     assert_mst_aw_addr :
-    assert ($bits(mst_req_o.aw.addr) == axi_addr_width)
+    assert ($bits(untagged_mgr_req_o.aw.addr) == axi_addr_width)
     else $fatal(1, $sformatf("llc> AXI Master port, AW ADDR width not equal to axi_addr_width"));
     assert_mst_ar_id :
-    assert ($bits(mst_req_o.ar.id) == axi_id_width + 1)
+    assert ($bits(untagged_mgr_req_o.ar.id) == axi_id_width + 1)
     else $fatal(1, $sformatf("llc> AXI Master port, AW ID not equal to axi_id_width + 1"));
     assert_mst_ar_addr :
-    assert ($bits(mst_req_o.ar.addr) == axi_addr_width)
+    assert ($bits(untagged_mgr_req_o.ar.addr) == axi_addr_width)
     else $fatal(1, $sformatf("llc> AXI Master port, AR ADDR width not equal to axi_addr_width"));
     assert_mst_w_data :
-    assert ($bits(mst_req_o.w.data) == axi_data_width)
+    assert ($bits(untagged_mgr_req_o.w.data) == axi_data_width)
     else $fatal(1, $sformatf("llc> AXI Master port, W DATA width not equal to axi_data_width"));
     assert_mst_r_data :
-    assert ($bits(mst_resp_i.r.data) == axi_data_width)
+    assert ($bits(untagged_mgr_resp_i.r.data) == axi_data_width)
     else $fatal(1, $sformatf("llc> AXI Master port, R DATA width not equal to axi_data_width"));
     // compare the types against the structs
     assert_mst_req_aw :
-    assert ($bits(mst_aw_chan_t) == $bits(mst_req_o.aw))
-    else $fatal(1, $sformatf("llc> AXI Master port, mst_aw_chan_t and mst_req_o.aw not equal"));
+    assert ($bits(mst_aw_chan_t) == $bits(untagged_mgr_req_o.aw))
+    else $fatal(1, $sformatf("llc> AXI Master port, mst_aw_chan_t and untagged_mgr_req_o.aw not equal"));
     assert_mst_req_w :
-    assert ($bits(w_chan_t) == $bits(mst_req_o.w))
-    else $fatal(1, $sformatf("llc> AXI Master port, w_chan_t and mst_req_o.w not equal"));
+    assert ($bits(w_chan_t) == $bits(untagged_mgr_req_o.w))
+    else $fatal(1, $sformatf("llc> AXI Master port, w_chan_t and untagged_mgr_req_o.w not equal"));
     assert_mst_req_b :
-    assert ($bits(mst_b_chan_t) == $bits(mst_resp_i.b))
-    else $fatal(1, $sformatf("llc> AXI Master port, mst_b_chan_t and mst_resp_i.b not equal"));
+    assert ($bits(mst_b_chan_t) == $bits(untagged_mgr_resp_i.b))
+    else $fatal(1, $sformatf("llc> AXI Master port, mst_b_chan_t and untagged_mgr_resp_i.b not equal"));
     assert_mst_req_ar :
-    assert ($bits(mst_ar_chan_t) == $bits(mst_req_o.ar))
-    else $fatal(1, $sformatf("llc> AXI Master port, mst_ar_chan_t and mst_req_i.ar not equal"));
+    assert ($bits(mst_ar_chan_t) == $bits(untagged_mgr_req_o.ar))
+    else $fatal(1, $sformatf("llc> AXI Master port, mst_ar_chan_t and untagged_mgr_req_i.ar not equal"));
     assert_mst_req_r :
-    assert ($bits(mst_r_chan_t) == $bits(mst_resp_i.r))
-    else $fatal(1, $sformatf("llc> AXI Slave port, slv_r_chan_t and mst_resp_i.r not equal"));
+    assert ($bits(mst_r_chan_t) == $bits(untagged_mgr_resp_i.r))
+    else $fatal(1, $sformatf("llc> AXI Slave port, slv_r_chan_t and untagged_mgr_resp_i.r not equal"));
   end
   // pragma translate_on
 
