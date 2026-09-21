@@ -83,7 +83,7 @@ package lookup_engine_hpdcache_cfg_pkg;
     userCfg.memDataWidth = 64;
     userCfg.wtEn = 1'b0;
     userCfg.wbEn = 1'b1;
-    userCfg.lowLatency = 1'b0;
+    userCfg.lowLatency = 1'b1;
     userCfg.userEn = 1'b0;
     userCfg.capAmoEn = 1'b0;
     userCfg.eccEn = 1'b0;  /*FIXME add additional CVA6 parameter*/
