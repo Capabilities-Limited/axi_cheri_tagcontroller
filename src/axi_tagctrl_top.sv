@@ -129,6 +129,8 @@ module axi_tagctrl_top #(
     axi_data_t      data;  // read data from the way
     axi_pkg::resp_t resp;
     logic           last;
+    logic           aborted;
+    logic           hit;
   } tagc_inp_t;
 
   // R tag bits payload between the tag cache and tag controller

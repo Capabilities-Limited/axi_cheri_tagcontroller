@@ -24,6 +24,7 @@ module hpdcache_wrapper #(
     // tag controller slave interfaces //
     /////////////////////////////////////
     // incoming tag read request descriptor
+    input logic read_req_abort_i[nReadPorts],
     input logic read_req_valid_i[nReadPorts],
     output logic read_req_ready_o[nReadPorts],
     input tag_req_t read_req_i[nReadPorts],
@@ -59,6 +60,7 @@ module hpdcache_wrapper #(
   //      {{{
   localparam type wbuf_timecnt_t = logic unsigned [HPDcacheCfg.u.wbufTimecntWidth-1:0];
   localparam type hpdcache_tag_t = logic [HPDcacheCfg.tagWidth-1:0];
+  localparam type hpdcache_pma_t = hpdcache_pkg::hpdcache_pma_t;
   localparam type hpdcache_data_word_t = logic [HPDcacheCfg.u.wordWidth-1:0];
   localparam type hpdcache_data_be_t = logic [(HPDcacheCfg.u.wordWidth+8-1)/8-1:0];
   localparam type hpdcache_req_offset_t = logic [HPDcacheCfg.reqOffsetWidth-1:0];
@@ -206,6 +208,9 @@ module hpdcache_wrapper #(
   logic cache_req_valid [HPDcacheCfg.u.nRequesters];
   logic cache_req_ready [HPDcacheCfg.u.nRequesters];
   hpdcache_req_t cache_req [HPDcacheCfg.u.nRequesters];
+  logic cache_req_abort [HPDcacheCfg.u.nRequesters];
+  hpdcache_tag_t cache_req_tag [HPDcacheCfg.u.nRequesters];
+  hpdcache_pma_t cache_req_pma [HPDcacheCfg.u.nRequesters];
   // resps...
   logic cache_rsp_valid [HPDcacheCfg.u.nRequesters];
   hpdcache_rsp_t cache_rsp [HPDcacheCfg.u.nRequesters];
@@ -219,16 +224,22 @@ module hpdcache_wrapper #(
         .tag_req_t(tag_req_t),
         .tag_read_resp_t(tag_read_resp_t),
         .hpdcache_req_t(hpdcache_req_t),
-        .hpdcache_rsp_t(hpdcache_rsp_t)
+        .hpdcache_rsp_t(hpdcache_rsp_t),
+        .hpdcache_tag_t(hpdcache_tag_t),
+        .hpdcache_pma_t(hpdcache_pma_t)
       ) read_wrapper_i (
         .clk_i, .rst_ni,
         .sid_i(readPortIdx),
+        .read_req_abort_i(read_req_abort_i[readPortIdx]),
         .read_req_valid_i(read_req_valid_i[readPortIdx]),
         .read_req_ready_o(read_req_ready_o[readPortIdx]),
         .read_req_i(read_req_i[readPortIdx]),
         .hpdcache_read_req_valid_o(cache_req_valid[readPortIdx]),
         .hpdcache_read_req_ready_i(cache_req_ready[readPortIdx]),
         .hpdcache_read_req_o(cache_req[readPortIdx]),
+        .hpdcache_read_req_abort_o(cache_req_abort[readPortIdx]),
+        .hpdcache_read_req_tag_o(cache_req_tag[readPortIdx]),
+        .hpdcache_read_req_pma_o(cache_req_pma[readPortIdx]),
         .read_resp_valid_o(read_resp_valid_o[readPortIdx]),
         .read_resp_o(read_resp_o[readPortIdx]),
         .hpdcache_read_resp_valid_i(cache_rsp_valid[readPortIdx]),
@@ -299,9 +310,9 @@ module hpdcache_wrapper #(
       .core_req_valid_i(cache_req_valid),
       .core_req_ready_o(cache_req_ready),
       .core_req_i      (cache_req),
-      .core_req_abort_i('{default: '0}), // no req abortion
-      .core_req_tag_i  ('{default: '0}), // unused as physical indexing is used
-      .core_req_pma_i  ('{default: '0}), // unused as physical indexing is used
+      .core_req_abort_i(cache_req_abort),
+      .core_req_tag_i  (cache_req_tag),
+      .core_req_pma_i  (cache_req_pma),
 
       .core_rsp_valid_o(cache_rsp_valid),
       .core_rsp_o      (cache_rsp),
