@@ -13,7 +13,7 @@ module hpdcache_read_req_rsp_wrapper #(
 
     input sid_t sid_i,
 
-    input logic read_req_abort_i,
+    input logic read_req_speculative_i,
     input logic read_req_valid_i,
     output logic read_req_ready_o,
     input tag_req_t read_req_i,
@@ -33,14 +33,23 @@ module hpdcache_read_req_rsp_wrapper #(
   );
 
 
-  // remember the tag of the address for VIPT mode
+  // remember the tag of the last accepted address for VIPT mode
   hpdcache_tag_t last_req_addr_tag_q;
+  // pulse abort in the cycle after a speculative request is accepted,
+  // which is the timing currently required by HPDCache.
+  logic abort_pending_q;
   // remember how to shift read responses based on the address
   logic [$clog2($bits(read_resp_o.data))-1:0] shifts [(2**$bits(read_req_i.a_x_id))-1:0];
-  always_ff @(posedge clk_i) begin
-    if (read_req_valid_i && hpdcache_read_req_ready_i) begin
-      shifts[read_req_i.a_x_id] <= read_req_i.a_x_addr;
-      last_req_addr_tag_q <= read_req_i.a_x_addr >> HPDcacheCfg.reqOffsetWidth;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      abort_pending_q <= 1'b0;
+    end else begin
+      abort_pending_q <= 1'b0;
+      if (read_req_valid_i && hpdcache_read_req_ready_i) begin
+        shifts[read_req_i.a_x_id] <= read_req_i.a_x_addr;
+        last_req_addr_tag_q <= read_req_i.a_x_addr >> HPDcacheCfg.reqOffsetWidth;
+        abort_pending_q <= read_req_speculative_i;
+      end
     end
   end
 
@@ -88,7 +97,7 @@ module hpdcache_read_req_rsp_wrapper #(
 
     // assign outputs
     hpdcache_read_req_o = req;
-    hpdcache_read_req_abort_o = read_req_abort_i;
+    hpdcache_read_req_abort_o = abort_pending_q;
     hpdcache_read_req_tag_o = last_req_addr_tag_q;
     hpdcache_read_req_pma_o.uncacheable = 1'b0;
     hpdcache_read_req_pma_o.io = 1'b0;

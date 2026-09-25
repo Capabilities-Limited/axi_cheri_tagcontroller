@@ -26,6 +26,7 @@ module tag_lookup_engine_table_lookups_read #(
   output logic           leaf_req_valid_o,
   input  logic           leaf_req_ready_i,
   output tag_req_t       leaf_req_o,
+  output logic           leaf_req_speculative_o, // TODO use it
   input  logic           leaf_resp_valid_i,
   output logic           leaf_resp_ready_o,
   input  tag_read_resp_t leaf_resp_i
