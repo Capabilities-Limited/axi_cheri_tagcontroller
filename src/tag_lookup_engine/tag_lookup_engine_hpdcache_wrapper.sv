@@ -27,7 +27,7 @@ module hpdcache_wrapper #(
     // tag controller slave interfaces //
     /////////////////////////////////////
     // incoming tag read request descriptor
-    input logic read_req_abort_i[nReadPorts],
+    input logic read_req_speculative_i[nReadPorts],
     input logic read_req_valid_i[nReadPorts],
     output logic read_req_ready_o[nReadPorts],
     input tag_req_t read_req_i[nReadPorts],
@@ -233,7 +233,7 @@ module hpdcache_wrapper #(
       ) read_wrapper_i (
         .clk_i, .rst_ni,
         .sid_i(hpdcache_req_sid_t'(readPortIdx)),
-        .read_req_abort_i(read_req_abort_i[readPortIdx]),
+        .read_req_speculative_i(read_req_speculative_i[readPortIdx]),
         .read_req_valid_i(read_req_valid_i[readPortIdx]),
         .read_req_ready_o(read_req_ready_o[readPortIdx]),
         .read_req_i(read_req_i[readPortIdx]),

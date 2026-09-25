@@ -110,6 +110,7 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
   logic root_read_req_valid[2], leaf_read_req_valid[2];
   logic root_read_req_ready[2], leaf_read_req_ready[2];
+  logic root_read_req_speculative[2], leaf_read_req_speculative[2];
   tag_req_t root_read_req[2], leaf_read_req[2];
   logic root_write_req_valid[2], leaf_write_req_valid;
   logic root_write_req_ready[2], leaf_write_req_ready;
@@ -186,6 +187,7 @@ module tag_lookup_engine #(
     .leaf_read_req_valid_o(leaf_read_req_valid),
     .leaf_read_req_ready_i(leaf_read_req_ready),
     .leaf_read_req_o(leaf_read_req),
+    .leaf_read_req_speculative_o(leaf_read_req_speculative),
     .leaf_read_resp_valid_i(leaf_read_resp_valid),
     .leaf_read_resp_ready_o(leaf_read_resp_ready),
     .leaf_read_resp_i(leaf_read_resp),
@@ -203,6 +205,8 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
   // Backing caches
   //////////////////////////////////////////////////////////////////////////////
+
+  assign root_read_req_speculative = '{default: 1'b0};
 
   // root accesses
   hpdcache_wrapper #(
@@ -225,6 +229,7 @@ module tag_lookup_engine #(
     .rst_ni,
 
     // incoming read tag request descriptor
+    .read_req_speculative_i(root_read_req_speculative),
     .read_req_valid_i(root_read_req_valid),
     .read_req_ready_o(root_read_req_ready),
     .read_req_i(root_read_req),
@@ -299,6 +304,7 @@ module tag_lookup_engine #(
     .rst_ni,
 
     // incoming read tag request descriptor
+    .read_req_speculative_i(leaf_read_req_speculative),
     .read_req_valid_i(leaf_read_req_valid),
     .read_req_ready_o(leaf_read_req_ready),
     .read_req_i(leaf_read_req),

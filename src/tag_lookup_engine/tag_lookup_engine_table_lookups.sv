@@ -53,6 +53,7 @@ module tag_lookup_engine_table_lookups #(
   output logic            leaf_read_req_valid_o[2],
   input  logic            leaf_read_req_ready_i[2],
   output tag_req_t        leaf_read_req_o[2],
+  output logic            leaf_read_req_speculative_o[2],
   input  logic            leaf_read_resp_valid_i[2],
   output logic            leaf_read_resp_ready_o[2],
   input  tag_read_resp_t  leaf_read_resp_i[2],
@@ -79,6 +80,7 @@ module tag_lookup_engine_table_lookups #(
   assign leaf_read_req_valid_o[1] = 1'b0;
   assign leaf_read_resp_ready_o[1] = 1'b0;
   assign leaf_read_req_o[1] = '0;
+  assign leaf_read_req_speculative_o[1] = 1'b0;
 
   // root table management fsm
   tag_lookup_engine_root_init #(
@@ -132,6 +134,7 @@ module tag_lookup_engine_table_lookups #(
     .leaf_req_valid_o(leaf_read_req_valid_o[0]),
     .leaf_req_ready_i(leaf_read_req_ready_i[0]),
     .leaf_req_o(leaf_read_req_o[0]),
+    .leaf_req_speculative_o(leaf_read_req_speculative_o[0]),
     .leaf_resp_valid_i(leaf_read_resp_valid_i[0]),
     .leaf_resp_ready_o(leaf_read_resp_ready_o[0]),
     .leaf_resp_i(leaf_read_resp_i[0])
