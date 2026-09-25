@@ -26,11 +26,14 @@ module tag_lookup_engine_table_lookups_read #(
   output logic           leaf_req_valid_o,
   input  logic           leaf_req_ready_i,
   output tag_req_t       leaf_req_o,
-  output logic           leaf_req_speculative_o, // TODO use it
+  output logic           leaf_req_speculative_o,
   input  logic           leaf_resp_valid_i,
   output logic           leaf_resp_ready_o,
   input  tag_read_resp_t leaf_resp_i
 );
+
+  localparam int unsigned SB_IDX_W = $clog2(MAX_IN_FLIGHT);
+  localparam int unsigned ROOT_DATA_IDX_W = $clog2($bits(root_resp_i.data));
 
   function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
     automatic tag_req_t ret;
@@ -40,7 +43,6 @@ module tag_lookup_engine_table_lookups_read #(
   endfunction
 
   // Scoreboard for tag read requests
-  localparam int unsigned SB_IDX_W = $clog2(MAX_IN_FLIGHT);
   typedef struct packed {
     logic allocated;
     logic root_sent;
@@ -52,10 +54,13 @@ module tag_lookup_engine_table_lookups_read #(
     axi_addr_t root_idx;
     tag_req_t req_payload;
     logic [$bits(req_i.a_x_id)-1:0] og_id;
+    logic leaf_retry_sent;
   } sb_entry_t;
+
   sb_entry_t [MAX_IN_FLIGHT-1:0] sb_q, sb_d;
   logic [SB_IDX_W-1:0] alloc_ptr_q, alloc_ptr_d;
   logic [SB_IDX_W-1:0] retire_ptr_q, retire_ptr_d;
+
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       sb_q <= '0;
@@ -74,6 +79,8 @@ module tag_lookup_engine_table_lookups_read #(
     // local helper variables
     automatic sb_entry_t sb_alloc;
     automatic sb_entry_t [MAX_IN_FLIGHT-1:0] sb_r = sb_q;
+    automatic logic root_has_leaf;
+    automatic logic retry_needed;
 
     // Default register assignments
     alloc_ptr_d = alloc_ptr_q;
@@ -85,6 +92,7 @@ module tag_lookup_engine_table_lookups_read #(
     req_ready_o = !sb_q[alloc_ptr_q].allocated;
     // if a request is presente and consumed, allocate it to the score board
     if (req_valid_i && req_ready_o) begin
+      sb_alloc = '0;
       sb_alloc.allocated = 1'b1;
       sb_alloc.root_sent = 1'b0;
       sb_alloc.leaf_sent = 1'b0;
@@ -93,6 +101,7 @@ module tag_lookup_engine_table_lookups_read #(
       sb_alloc.root_idx = root_idx_i;
       sb_alloc.req_payload = req_i;
       sb_alloc.og_id = req_i.a_x_id;
+      sb_alloc.leaf_retry_sent = 1'b0;
       alloc_ptr_d = alloc_ptr_q + 1;
       sb_r[alloc_ptr_q] = sb_alloc;
     end
@@ -110,7 +119,6 @@ module tag_lookup_engine_table_lookups_read #(
       if (sb_r[idx].allocated && !sb_r[idx].root_sent) begin
         root_req_valid_o = 1'b1;
         root_req_o = desc_with_addr(sb_r[idx].req_payload, sb_r[idx].root_idx);
-        //root_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0]; // use scoreboard idx as id
         root_req_o.a_x_id = '0;
         root_req_o.a_x_id[SB_IDX_W-1:0] = idx; // use scoreboard idx as id
         if (root_req_ready_i) sb_d[idx].root_sent = 1'b1;
@@ -121,16 +129,48 @@ module tag_lookup_engine_table_lookups_read #(
     // leaf requests handling //
     leaf_req_valid_o = 1'b0;
     leaf_req_o = '0;
+    leaf_req_speculative_o = 1'b0;
+    // Prioritise leaf miss over speculative leaf lookups. (If an earlier speculative lookup missed
+    // and the root says a leaf exists, re-issue the same lookup as a non-speculative retry)
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
-      if (sb_r[idx].allocated && !sb_r[idx].leaf_sent) begin
+      root_has_leaf = sb_r[idx].root_received &&
+                      sb_r[idx].root_resp.data[sb_r[idx].root_idx[ROOT_DATA_IDX_W-1:0]];
+      retry_needed = sb_r[idx].allocated && root_has_leaf && sb_r[idx].leaf_received &&
+                     !sb_r[idx].leaf_resp.hit && !sb_r[idx].leaf_retry_sent;
+      if (retry_needed) begin
         leaf_req_valid_o = 1'b1;
         leaf_req_o = sb_r[idx].req_payload;
-        //leaf_req_o.a_x_id = idx[$bits(req_i.a_x_id)-1:0];
         leaf_req_o.a_x_id = '0;
         leaf_req_o.a_x_id[SB_IDX_W-1:0] = idx;
-        if (leaf_req_ready_i) sb_d[idx].leaf_sent = 1'b1;
+        if (leaf_req_ready_i) begin
+          sb_d[idx].leaf_retry_sent = 1'b1;
+          sb_d[idx].leaf_received = 1'b0;
+        end
         break;
+      end
+    end
+
+    // if no retry was needed (leaf_req_valid_o wasn't set yet)
+    // If the root result is not known yet, issue a speculative leaf request. If the root result
+    // arrives first, suppress the leaf access when no leaf exists, otherwise issue a single
+    // non-speculative leaf request.
+    if (!leaf_req_valid_o) begin
+      for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
+        automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
+        if (sb_r[idx].allocated && !sb_r[idx].leaf_sent) begin
+          root_has_leaf = sb_r[idx].root_received &&
+                          sb_r[idx].root_resp.data[sb_r[idx].root_idx[ROOT_DATA_IDX_W-1:0]];
+          if (!sb_r[idx].root_received || root_has_leaf) begin
+            leaf_req_valid_o = 1'b1;
+            leaf_req_o = sb_r[idx].req_payload;
+            leaf_req_o.a_x_id = '0;
+            leaf_req_o.a_x_id[SB_IDX_W-1:0] = idx;
+            leaf_req_speculative_o = !sb_r[idx].root_received;
+            if (leaf_req_ready_i) sb_d[idx].leaf_sent = 1'b1;
+            break;
+          end
+        end
       end
     end
 
@@ -154,18 +194,26 @@ module tag_lookup_engine_table_lookups_read #(
     // retire scoreboard entry //
     resp_valid_o = 1'b0; // don't send any response until ...
     resp_o = '0;
-    // ... all responses are received for the entry in the retire slot
-    if (sb_r[retire_ptr_q].allocated &&
-        sb_r[retire_ptr_q].root_received &&
-        sb_r[retire_ptr_q].leaf_received) begin
-      localparam int unsigned w = $clog2($bits(sb_r[retire_ptr_q].root_resp.data));
-      if (sb_r[retire_ptr_q].root_resp.data[sb_r[retire_ptr_q].root_idx[0+:w]] == 1'b0) begin
-        resp_o = sb_r[retire_ptr_q].root_resp;
-        resp_o.data = '0;
-      end else resp_o = sb_r[retire_ptr_q].leaf_resp;
-      resp_o.id = sb_r[retire_ptr_q].og_id; // overwrite id with original request id
-      resp_valid_o = 1'b1; // send response
-      if (resp_ready_i) begin // when the response is consumed ...
+    // ... the root response is received and either no leaf access is needed or
+    // all leaf responses are received for the entry in the retire slot
+    if (sb_r[retire_ptr_q].allocated && sb_r[retire_ptr_q].root_received) begin
+      root_has_leaf = sb_r[retire_ptr_q].root_resp.data[
+                        sb_r[retire_ptr_q].root_idx[ROOT_DATA_IDX_W-1:0]];
+      if ((!root_has_leaf && !sb_r[retire_ptr_q].leaf_sent) || sb_r[retire_ptr_q].leaf_received) begin
+        retry_needed = root_has_leaf && !sb_r[retire_ptr_q].leaf_resp.hit &&
+                       !sb_r[retire_ptr_q].leaf_retry_sent;
+
+        if (!retry_needed) begin
+          if (!root_has_leaf) begin
+            resp_o = sb_r[retire_ptr_q].root_resp;
+            resp_o.data = '0;
+          end else resp_o = sb_r[retire_ptr_q].leaf_resp;
+          resp_o.id = sb_r[retire_ptr_q].og_id; // overwrite id with original request id
+          resp_valid_o = 1'b1; // send response
+        end
+      end
+
+      if (resp_ready_i && resp_valid_o) begin // when the response is consumed ...
         sb_d[retire_ptr_q].allocated = 1'b0; // deallocate scoreboard entry
         retire_ptr_d = retire_ptr_q + 1; // bump retire slot
       end
