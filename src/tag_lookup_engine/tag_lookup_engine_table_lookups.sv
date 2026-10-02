@@ -64,7 +64,9 @@ module tag_lookup_engine_table_lookups #(
   output tag_data_req_t   leaf_write_data_req_o,
   input  logic            leaf_write_resp_valid_i,
   output logic            leaf_write_resp_ready_o,
-  input  tag_write_resp_t leaf_write_resp_i
+  input  tag_write_resp_t leaf_write_resp_i,
+  // performance events
+  output axi_tagctrl_pkg::tag_lookup_engine_table_lookups_events_t events_o
 );
 
   // helpers //
@@ -134,7 +136,9 @@ module tag_lookup_engine_table_lookups #(
     .leaf_req_o(leaf_read_req_o[0]),
     .leaf_resp_valid_i(leaf_read_resp_valid_i[0]),
     .leaf_resp_ready_o(leaf_read_resp_ready_o[0]),
-    .leaf_resp_i(leaf_read_resp_i[0])
+    .leaf_resp_i(leaf_read_resp_i[0]),
+    // performance events
+    .events_o(events_o.read_events)
   );
   // tag writes //
   tag_lookup_engine_table_lookups_write #(
@@ -187,7 +191,9 @@ module tag_lookup_engine_table_lookups #(
     .leaf_data_o(leaf_write_data_req_o),
     .leaf_resp_valid_i(leaf_write_resp_valid_i),
     .leaf_resp_ready_o(leaf_write_resp_ready_o),
-    .leaf_resp_i(leaf_write_resp_i)
+    .leaf_resp_i(leaf_write_resp_i),
+    // performance events
+    .events_o(events_o.write_events)
   );
 
 endmodule

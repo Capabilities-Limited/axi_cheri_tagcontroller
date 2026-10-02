@@ -72,7 +72,11 @@ module tag_lookup_engine #(
   // tag store master interfaces //
   /////////////////////////////////
   output mem_req_t mem_req_o,
-  input mem_resp_t mem_resp_i
+  input mem_resp_t mem_resp_i,
+
+  // performance events //
+  ////////////////////////
+  output axi_tagctrl_pkg::tag_lookup_engine_events_t events_o
 );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -203,7 +207,9 @@ module tag_lookup_engine #(
     .leaf_write_data_req_o(leaf_write_data_req),
     .leaf_write_resp_valid_i(leaf_write_resp_valid),
     .leaf_write_resp_ready_o(leaf_write_resp_ready),
-    .leaf_write_resp_i(leaf_write_resp)
+    .leaf_write_resp_i(leaf_write_resp),
+    // performance events
+    .events_o(events_o.lookup_events)
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -250,6 +256,10 @@ module tag_lookup_engine #(
     .write_resp_valid_o(root_write_resp_valid),
     .write_resp_ready_i(root_write_resp_ready),
     .write_resp_o(root_write_resp),
+
+    //// performance events //
+    ///////////////////////////////////
+    .events_o(events_o.root_cache_events),
 
     //// tag store memory interfaces //
     ///////////////////////////////////
@@ -324,6 +334,10 @@ module tag_lookup_engine #(
     .write_resp_valid_o(leaf_write_resp_valid_arr),
     .write_resp_ready_i(leaf_write_resp_ready_arr),
     .write_resp_o(leaf_write_resp_arr),
+
+    //// performance events //
+    ///////////////////////////////////
+    .events_o(events_o.leaf_cache_events),
 
     //// tag store memory interfaces //
     ///////////////////////////////////
