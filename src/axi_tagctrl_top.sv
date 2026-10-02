@@ -26,6 +26,8 @@ module axi_tagctrl_top #(
     parameter logic allow_resume = 1'b0,
     /// allow flush when locked
     parameter logic allow_flush_when_locked = 1'b0,
+    /// how many perf counters (0 to disable completely)
+    parameter int unsigned perf_counters = 0,
     /// Capability size in memory
     parameter int unsigned cap_size = 128,
     /// Maximum concurrent AXI transactions on both ports
@@ -181,6 +183,9 @@ module axi_tagctrl_top #(
   logic perform_flushing;
   logic done_flushing;
 
+  // performance events
+  axi_tagctrl_pkg::tagctrl_events_t events;
+
   // configuration module
   axi_tagctrl_config #(
     .GROUPING_FACTOR(grouping_factor),
@@ -201,7 +206,8 @@ module axi_tagctrl_top #(
     .init_start(init_start),
     .init_locked(init_locked),
     .allow_resume(allow_resume),
-    .allow_flush_when_locked(allow_flush_when_locked)
+    .allow_flush_when_locked(allow_flush_when_locked),
+    .perf_counters(perf_counters)
   ) i_axi_tagctrl_config (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
@@ -227,7 +233,10 @@ module axi_tagctrl_top #(
     .root_table_top_addr_o(root_table_top_addr),
     .leaf_table_base_addr_o(leaf_table_base_addr),
     .leaf_table_top_addr_o(leaf_table_top_addr),
-    .error_o(/*TODO*/)
+    .error_o(/*TODO*/),
+
+    .events_o(events.config_events),
+    .events_i(events)
   );
 
   // backing tag memory accesses
@@ -279,7 +288,9 @@ module axi_tagctrl_top #(
     .write_resp_o(tagc_b_chan),
     // tag store memory interfaces
     .mem_req_o(tagc_req),
-    .mem_resp_i(tagc_resp)
+    .mem_resp_i(tagc_resp),
+    // performance events
+    .events_o(events.lookup_engine_events)
   );
 
   //--------------------------------//
