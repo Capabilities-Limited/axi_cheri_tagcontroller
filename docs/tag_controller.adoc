@@ -709,6 +709,25 @@ is locked.
 | Indicate the number of leaf-level tag bits covered by a single root-level tag
 bit.
 
+| root_cache_ways
+| 4
+| Indicate the associativity of the root cache.
+
+| root_cache_byte_size
+| 1024
+| Indicate the size of the root cache in bytes.
+
+| leaf_cache_ways
+| 4
+| Indicate the associativity of the leaf cache.
+
+| leaf_cache_byte_size
+| 16384
+| Indicate the size of the leaf cache in bytes. For 16-bytes tagged chunks, a 16384-bytes leaf cache covers 16*16384 = 2MB worth of data memory.
+This corresponds to a 64x factor with respect to a 32KB data cache.
+We recommend a factor of at least 8x.
+However, for small caches, we further increase the size to avoid aliasing effects.
+
 | tagged_chunk_size
 | 16
 | Indicate the granularity of tagged memory chunks in bytes.
