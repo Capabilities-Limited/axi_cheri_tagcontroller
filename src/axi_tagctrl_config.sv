@@ -318,4 +318,12 @@ module axi_tagctrl_config #(
 
   end
 
+  // pragma translate_off
+  initial begin : proc_assert_axi_params
+    assert_config_axi_data_width :
+    assert ($bits(slv_req_i.w.data) == 64)
+    else $fatal(1, "AXI config only supports 64-bit data width");
+  end
+  // pragma translate_on
+
 endmodule

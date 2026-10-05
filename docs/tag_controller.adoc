@@ -740,6 +740,7 @@ bit.
 | axi_data_width
 | 32’d64
 | Indicate the AXI data bit width.
+  Currently only 64 is supported.
 
 | axi_user_width
 | 32’d1
