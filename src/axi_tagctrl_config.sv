@@ -292,13 +292,13 @@ module axi_tagctrl_config #(
             if (do_lock) locked_d = 1'b1;
           end
           12'h010: begin
-            covered_base_d = wdata_masked;
+            covered_base_d = wdata_masked | (covered_base_q & ~bit_strb);
           end
           12'h018: begin
-            covered_top_d = wdata_masked;
+            covered_top_d = wdata_masked | (covered_top_q & ~bit_strb);
           end
           12'h020: begin
-            table_base_d = wdata_masked;
+            table_base_d = wdata_masked | (covered_base_q & ~bit_strb);
           end
         endcase
       end
