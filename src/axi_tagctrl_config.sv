@@ -249,6 +249,7 @@ module axi_tagctrl_config #(
     covered_base_d = covered_base_q;
     covered_top_d = covered_top_q;
     table_base_d = table_base_q;
+    locked_d = locked_q;
     cmd_start = 1'b0;
     cmd_resume = 1'b0;
     cmd_stop = 1'b0;
