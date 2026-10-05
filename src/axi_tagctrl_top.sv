@@ -9,6 +9,10 @@
 
 module axi_tagctrl_top #(
     parameter int unsigned grouping_factor = 256,
+    parameter int unsigned root_cache_ways = 4,
+    parameter int unsigned root_cache_byte_size = 1024,
+    parameter int unsigned leaf_cache_ways = 4,
+    parameter int unsigned leaf_cache_byte_size = 16384,
     parameter int unsigned tagged_chunk_size = 16,
     parameter int unsigned covered_align = 4096,
     parameter int unsigned tag_store_align = 64,
@@ -243,7 +247,11 @@ module axi_tagctrl_top #(
     .mem_req_t(slv_req_t),
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t),
-    .GROUPING_FACTOR(grouping_factor)
+    .GROUPING_FACTOR(grouping_factor),
+    .ROOT_CACHE_WAYS(root_cache_ways),
+    .ROOT_CACHE_BYTE_SIZE(root_cache_byte_size),
+    .LEAF_CACHE_WAYS(leaf_cache_ways),
+    .LEAF_CACHE_BYTE_SIZE(leaf_cache_byte_size)
   ) i_tag_lookup_engine (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
