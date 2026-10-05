@@ -11,7 +11,7 @@ package lookup_engine_hpdcache_cfg_pkg;
     userCfg.paWidth = 49;
     userCfg.wordWidth = wordWidth;
     userCfg.wordUserWidth = 1;
-    userCfg.sets = (byteSize * 8) / (nWays * clWords);
+    userCfg.sets = (byteSize * 8) / (nWays * clWords * wordWidth);
     userCfg.ways = nWays;
     userCfg.clWords = clWords;
     userCfg.reqWords = 64'd4;
