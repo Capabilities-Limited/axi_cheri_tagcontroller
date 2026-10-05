@@ -266,17 +266,29 @@ are defined:
 | Read-only
 | Read-only
 
-| 0x0030 - 0x0f00
+| 0x0030 - 0x0ed0
 | reserved
 | Reserved for future use
 | Read-only zero
 | Read-only zero
 
+| 0x0eb0
+| perf_inhibit
+| Performance counter inhibit
+| Read/Write
+| Read/Write
+
+| 0x0ec0 - 0xf00
+| perf_select
+| Performance counter event selectors
+| Read/Write
+| Read/Write
+
 | 0x0f00 - 0x1000
-| reserved_stat_cnt
-| Reserved for statistics counters
-| Read-only zero
-| Read-only zero
+| perf_counters
+| Performance counters
+| Read/Write
+| Read/Write
 
 |===
 
@@ -479,6 +491,24 @@ the requested covered range (`covered_top - covered_base`), or 128 bytes,
 whichever is greater. As a special case, if no covered memory is requested
 (`covered_top = covered_base`), then the `tag_table_top` will equal the
 `tag_table_base`, and no tags will be managed.
+
+=== perf_inhibit (0x0ed0)
+This is a bitvector with one bit per enabled performance counter.
+The least significant bit controls the first performance counter, etc.
+If the bit is zero, the corresponding counter is paused and will not count up.
+It can still be read/written to by the configuration interface.
+Bits past the number of enabled counters are read-only zero: writes to them are ignored.
+
+=== perf_select (0x0ee0-0x0f00)
+This configures which events each performance counter is listening for.
+There is one byte per enabled performance counter: 0x0ee0 corresponds to 0xf00, etc.
+See link:perf_events.adoc[`perf_events.md`] for a list of the supported events.
+Bytes past the number of enabled counters are read-only zero: writes to them are ignored.
+
+=== perf_counters (0x0f00-0x1000)
+Performance counter registers: 64-bits per enabled performance counter.
+The performance counters increment whenever their event (configured via the `perf_select` register) occurs, and if they are not inhibited (via the `perf_inhibit` register).
+Addresses past the number of enabled counters are read-only zero: writes to them are ignored.
 
 == Sub-Module Design Specification
 This section describes the microarchitectural design of the tag controller.
@@ -728,6 +758,11 @@ bit.
 | max_trans
 | 10
 | Indicate the maximum number of concurrent transactions.
+
+| perf_counters
+| 0
+| Indicate the number of performance counting registers to enable. Maximum 32.
+  A value of 0 disables performance counters.
 
 | axi_id_width
 | 32’d6
