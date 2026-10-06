@@ -253,8 +253,23 @@ module tag_lookup_engine #(
   logic leaf_write_req_ready_arr[1];
   assign leaf_write_req_ready = leaf_write_req_ready_arr[0];
 
+  logic leaf_write_req_valid_arr[1];
+  assign leaf_write_req_valid_arr[0] = leaf_write_req_valid;
+
+  tag_req_t leaf_write_req_arr[1];
+  assign leaf_write_req_arr[0] = leaf_write_req;
+
   logic leaf_write_data_req_ready_arr[1];
   assign leaf_write_data_req_ready = leaf_write_data_req_ready_arr[0];
+
+  logic leaf_write_data_req_valid_arr[1];
+  assign leaf_write_data_req_valid_arr[0] = leaf_write_data_req_valid;
+
+  tag_data_req_t leaf_write_data_req_arr[1];
+  assign leaf_write_data_req_arr[0] = leaf_write_data_req;
+
+  logic leaf_write_resp_ready_arr[1];
+  assign leaf_write_resp_ready_arr[0] = leaf_write_resp_ready;
 
   logic leaf_write_resp_valid_arr[1];
   assign leaf_write_resp_valid = leaf_write_resp_valid_arr[0];
@@ -286,20 +301,20 @@ module tag_lookup_engine #(
     .read_req_ready_o(leaf_read_req_ready),
     .read_req_i(leaf_read_req),
     // incoming write tag request descriptor
-    .write_req_valid_i('{leaf_write_req_valid}),
+    .write_req_valid_i(leaf_write_req_valid_arr),
     .write_req_ready_o(leaf_write_req_ready_arr),
-    .write_req_i('{leaf_write_req}),
+    .write_req_i(leaf_write_req_arr),
     // incoming write data
-    .write_data_req_valid_i('{leaf_write_data_req_valid}),
+    .write_data_req_valid_i(leaf_write_data_req_valid_arr),
     .write_data_req_ready_o(leaf_write_data_req_ready_arr),
-    .write_data_req_i('{leaf_write_data_req}),
+    .write_data_req_i(leaf_write_data_req_arr),
     // outgoing read response
     .read_resp_valid_o(leaf_read_resp_valid),
     .read_resp_ready_i(leaf_read_resp_ready),
     .read_resp_o(leaf_read_resp),
     // outgoing write response
     .write_resp_valid_o(leaf_write_resp_valid_arr),
-    .write_resp_ready_i('{leaf_write_resp_ready}),
+    .write_resp_ready_i(leaf_write_resp_ready_arr),
     .write_resp_o(leaf_write_resp_arr),
 
     //// tag store memory interfaces //
