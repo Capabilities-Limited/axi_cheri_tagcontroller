@@ -239,8 +239,8 @@ module axi_tagctrl_config #(
   always_comb begin : config_write
     automatic logic do_start, do_resume, do_stop, do_lock, do_config, accept, write_valid;
     // categorise write
-    automatic type(slv_req_i.w.data) bit_strb;
-    automatic type(slv_req_i.w.data) wdata_masked;
+    automatic logic [$bits(slv_req_i.w.data)-1:0] bit_strb;
+    automatic logic [$bits(slv_req_i.w.data)-1:0] wdata_masked;
     automatic logic [11:0] addr_masked;
     bit_strb = '0;
     for (int unsigned i = 0; i < $bits(slv_req_i.w.strb); i++)
