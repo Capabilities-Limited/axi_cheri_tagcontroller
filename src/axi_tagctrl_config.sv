@@ -179,6 +179,17 @@ module axi_tagctrl_config #(
     return {addr[11:3], 3'b000};
   endfunction
 
+  // config address map //
+  ////////////////////////
+
+  typedef enum logic [11:0] { ADDR_STATUS = 12'h000,
+                              ADDR_CONTROL = 12'h008,
+                              ADDR_COVERED_BASE = 12'h010,
+                              ADDR_COVERED_TOP = 12'h018,
+                              ADDR_TABLE_BASE = 12'h020,
+                              ADDR_TABLE_TOP = 12'h028
+                            } config_map_start_t;
+
   // handle reads //
   //////////////////
   // we latch requests to break the comb path
@@ -206,7 +217,7 @@ module axi_tagctrl_config #(
     slv_resp_o.r.user = '0;
     if (read_req_valid_q) begin
       case (mask_addr(read_req_q.addr))
-        12'h000: begin
+        ADDR_STATUS: begin
           automatic status_t status = status_t'{default: '0};
           status.error = error_o;
           status.locked = locked_q;
@@ -216,10 +227,10 @@ module axi_tagctrl_config #(
           status.serving = (fsm_state_q == SERVING);
           slv_resp_o.r.data = status;
         end
-        12'h010: slv_resp_o.r.data = covered_base_q;
-        12'h018: slv_resp_o.r.data = covered_top_q;
-        12'h020: slv_resp_o.r.data = table_base_q;
-        12'h028: slv_resp_o.r.data = tag_store_top_addr_o;
+        ADDR_COVERED_BASE: slv_resp_o.r.data = covered_base_q;
+        ADDR_COVERED_TOP: slv_resp_o.r.data = covered_top_q;
+        ADDR_TABLE_BASE: slv_resp_o.r.data = table_base_q;
+        ADDR_TABLE_TOP: slv_resp_o.r.data = tag_store_top_addr_o;
       endcase
       // send response
       slv_resp_o.r_valid = 1'b1;
@@ -250,11 +261,11 @@ module axi_tagctrl_config #(
     wdata_masked = slv_req_i.w.data & bit_strb;
     addr_masked = mask_addr(slv_req_i.aw.addr);
 
-    do_start  = (addr_masked == 12'h008) && |(wdata_masked & 'h00000001);
-    do_resume = (addr_masked == 12'h008) && |(wdata_masked & 'h00000100);
-    do_stop   = (addr_masked == 12'h008) && |(wdata_masked & 'h00010000);
-    do_lock   = (addr_masked == 12'h008) && |(wdata_masked & 'h01000000);
-    do_config = addr_masked inside {12'h010, 12'h018, 12'h020};
+    do_start  = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h00000001);
+    do_resume = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h00000100);
+    do_stop   = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h00010000);
+    do_lock   = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h01000000);
+    do_config = addr_masked inside {ADDR_COVERED_BASE, ADDR_COVERED_TOP, ADDR_TABLE_BASE};
     // establish if write is ignored or accepted
     accept = (do_start && (fsm_state_q == UNCONFIGURED)) ||
              (do_resume && (fsm_state_q == UNCONFIGURED)) ||
@@ -287,19 +298,19 @@ module axi_tagctrl_config #(
       // when write is not ignored, perform desired effect
       if (!locked_q && accept) begin
         case (addr_masked)
-          12'h008: begin
+          ADDR_CONTROL: begin
             if (do_start) cmd_start = 1'b1;
             else if (do_resume) cmd_resume = 1'b1;
             else if (do_stop) cmd_stop = 1'b1;
             if (do_lock) locked_d = 1'b1;
           end
-          12'h010: begin
+          ADDR_COVERED_BASE: begin
             covered_base_d = wdata_masked | (covered_base_q & ~bit_strb);
           end
-          12'h018: begin
+          ADDR_COVERED_TOP: begin
             covered_top_d = wdata_masked | (covered_top_q & ~bit_strb);
           end
-          12'h020: begin
+          ADDR_TABLE_BASE: begin
             table_base_d = wdata_masked | (covered_base_q & ~bit_strb);
           end
         endcase
