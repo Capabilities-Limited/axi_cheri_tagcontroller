@@ -222,7 +222,7 @@ module hpdcache_wrapper #(
         .hpdcache_rsp_t(hpdcache_rsp_t)
       ) read_wrapper_i (
         .clk_i, .rst_ni,
-        .sid_i(readPortIdx),
+        .sid_i(hpdcache_req_sid_t'(readPortIdx)),
         .read_req_valid_i(read_req_valid_i[readPortIdx]),
         .read_req_ready_o(read_req_ready_o[readPortIdx]),
         .read_req_i(read_req_i[readPortIdx]),
@@ -250,7 +250,7 @@ module hpdcache_wrapper #(
         .hpdcache_rsp_t(hpdcache_rsp_t)
       ) write_wrapper_i (
         .clk_i, .rst_ni,
-        .sid_i(nReadPorts+writePortIdx),
+        .sid_i(hpdcache_req_sid_t'(nReadPorts+writePortIdx)),
         .write_req_valid_i(write_req_valid_i[writePortIdx]),
         .write_req_ready_o(write_req_ready_o[writePortIdx]),
         .write_req_i(write_req_i[writePortIdx]),
@@ -352,9 +352,9 @@ module hpdcache_wrapper #(
       .cfg_rtab_single_entry_i            (1'b0),
       .cfg_default_wb_i                   (1'b0),
       .mem_resp_read_inval_i              (1'b0),
-      .mem_resp_read_inval_nline_i        (1'b0),
+      .mem_resp_read_inval_nline_i        ('0),
       .cfg_scrub_enable_i                 (1'b0),
-      .cfg_scrub_period_i                 (1'b0),
+      .cfg_scrub_period_i                 ('0),
       .cfg_scrub_restart_i                (1'b0)
   );
 
