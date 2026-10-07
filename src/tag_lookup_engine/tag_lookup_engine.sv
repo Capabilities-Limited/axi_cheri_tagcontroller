@@ -5,6 +5,8 @@
 // * per lookup stream caches
 // * an axi_mux to produce a single stream of tag requests
 
+`include "axi/typedef.svh"
+
 import lookup_engine_hpdcache_cfg_pkg::*;
 
 module tag_lookup_engine #(

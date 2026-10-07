@@ -1,3 +1,5 @@
+`include "common_cells/registers.svh"
+
 module axi_tagctrl_config #(
   parameter int unsigned GROUPING_FACTOR = 512,
   parameter int unsigned TAGGED_CHUNK_SIZE = 16,

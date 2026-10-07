@@ -1,5 +1,8 @@
 // TODO header
 
+`include "hpdcache_typedef.svh"
+`include "axi/typedef.svh"
+
 module hpdcache_wrapper #(
     parameter type tag_req_t = logic,
     parameter type tag_data_req_t = logic,
