@@ -19,7 +19,8 @@ module axi_tagctrl_config #(
   parameter logic init_start = 1'b0,
   parameter logic init_locked = 1'b1,
   parameter logic allow_resume = 1'b0, // TODO consider param
-  parameter logic allow_flush_when_locked = 1'b0 // TODO consider param
+  parameter logic allow_flush_when_locked = 1'b0, // TODO consider param
+  parameter int unsigned perf_counters = 1'b0
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -45,7 +46,11 @@ module axi_tagctrl_config #(
   output axi_addr_t root_table_top_addr_o,
   output axi_addr_t leaf_table_base_addr_o,
   output axi_addr_t leaf_table_top_addr_o,
-  output logic [7:0] error_o
+  output logic [7:0] error_o,
+
+  // perf events
+  output axi_tagctrl_pkg::tagctrl_cfg_events_t events_o,
+  input axi_tagctrl_pkg::tagctrl_events_t events_i
 );
 
   // helper address functions //
@@ -136,6 +141,29 @@ module axi_tagctrl_config #(
   `FFL(covered_top_q, covered_top_d, 1'b1, init_covered_top, clk_i, rst_ni)
   `FFL(table_base_q, table_base_d, 1'b1, init_tag_table_base, clk_i, rst_ni)
 
+  // performance counters //
+  //////////////////////////
+
+  localparam int unsigned PERF_COUNTERS_MAX = 32;
+  logic [PERF_COUNTERS_MAX-1:0][63:0] perf_counters_q, perf_counters_d;
+  logic [PERF_COUNTERS_MAX-1:0][7:0] perf_select_q, perf_select_d;
+  logic [PERF_COUNTERS_MAX-1:0] perf_inhibit_q, perf_inhibit_d;
+  for (genvar i = 0; i < PERF_COUNTERS_MAX; i = i + 1) begin
+    if (i < perf_counters) begin
+      `FFL(perf_counters_q[i], perf_counters_d[i], 1'b1, 64'b0, clk_i, rst_ni)
+      `FFL(perf_select_q[i], perf_select_d[i], 1'b1, 8'b0, clk_i, rst_ni)
+      `FFL(perf_inhibit_q[i], perf_inhibit_d[i], 1'b1, 1'b0, clk_i, rst_ni)
+    end else begin
+      assign perf_counters_q[i] = '0;
+      assign perf_select_q[i] = '0;
+      assign perf_inhibit_q[i] = '0;
+    end
+  end
+
+  // latch incoming events to cut paths
+  axi_tagctrl_pkg::tagctrl_events_t events_q;
+  `FFL(events_q, events_i, 1'b1, '0, clk_i, rst_ni);
+
   // produce output signals //
   ////////////////////////////
 
@@ -179,6 +207,33 @@ module axi_tagctrl_config #(
     return {addr[11:3], 3'b000};
   endfunction
 
+  // config address map //
+  ////////////////////////
+
+  typedef enum logic [11:0] { ADDR_STATUS = 12'h000,
+                              ADDR_CONTROL = 12'h008,
+                              ADDR_COVERED_BASE = 12'h010,
+                              ADDR_COVERED_TOP = 12'h018,
+                              ADDR_TABLE_BASE = 12'h020,
+                              ADDR_TABLE_TOP = 12'h028,
+                              ADDR_PERF_INHIBIT = 12'heb0,
+                              ADDR_PERF_SELECT = 12'hec0,
+                              ADDR_PERF_COUNTER = 12'hf00
+                            } config_map_start_t;
+
+  // event monitoring //
+  //////////////////////
+  if (perf_counters > 0) begin
+    assign events_o.state_unconfigured = fsm_state_q == UNCONFIGURED;
+    assign events_o.state_preflushing = fsm_state_q == PRE_FLUSHING;
+    assign events_o.state_flushing = fsm_state_q == FLUSHING;
+    assign events_o.state_prezeroing = fsm_state_q == PRE_ZEROING;
+    assign events_o.state_zeroing = fsm_state_q == ZEROING;
+    assign events_o.state_serving = fsm_state_q == SERVING;
+  end else begin
+    assign events_o = '0;
+  end
+
   // handle reads //
   //////////////////
   // we latch requests to break the comb path
@@ -188,6 +243,8 @@ module axi_tagctrl_config #(
   `FFL(read_req_q, read_req_d, 1'b1, slv_req_t'{default: '0}, clk_i, rst_ni)
   `FFL(read_req_valid_q, read_req_valid_d, 1'b1, 1'b0, clk_i, rst_ni)
   always_comb begin : config_read
+    automatic logic [11:0] addr_masked;
+    addr_masked = mask_addr(read_req_q.addr);
     // accept incoming request
     read_req_valid_d = read_req_valid_q;
     read_req_d = read_req_q;
@@ -205,8 +262,8 @@ module axi_tagctrl_config #(
     slv_resp_o.r.last = 1'b1;
     slv_resp_o.r.user = '0;
     if (read_req_valid_q) begin
-      case (mask_addr(read_req_q.addr))
-        12'h000: begin
+      case (addr_masked)
+        ADDR_STATUS: begin
           automatic status_t status = status_t'{default: '0};
           status.error = error_o;
           status.locked = locked_q;
@@ -216,11 +273,38 @@ module axi_tagctrl_config #(
           status.serving = (fsm_state_q == SERVING);
           slv_resp_o.r.data = status;
         end
-        12'h010: slv_resp_o.r.data = covered_base_q;
-        12'h018: slv_resp_o.r.data = covered_top_q;
-        12'h020: slv_resp_o.r.data = table_base_q;
-        12'h028: slv_resp_o.r.data = tag_store_top_addr_o;
+        ADDR_COVERED_BASE: slv_resp_o.r.data = covered_base_q;
+        ADDR_COVERED_TOP: slv_resp_o.r.data = covered_top_q;
+        ADDR_TABLE_BASE: slv_resp_o.r.data = table_base_q;
+        ADDR_TABLE_TOP: slv_resp_o.r.data = tag_store_top_addr_o;
       endcase
+      if (perf_counters > 0) begin
+        // Read of counter state from config interface
+        // It doesn't matter if this is above the max counter value because
+        // the wire is just not connected to any register in that case.
+
+        // Reads of inhibit register
+        if (addr_masked == ADDR_PERF_INHIBIT) begin
+          slv_resp_o.r.data = perf_inhibit_q;
+        end
+        // Reads of select registers
+        if (addr_masked >= ADDR_PERF_SELECT && addr_masked < ADDR_PERF_SELECT + PERF_COUNTERS_MAX) begin
+          // We need to read 8 select registers. Select which "chunk" of 8 based on address bits
+          automatic logic[1:0] perf_counter_chunk = addr_masked[4:3];
+          for (int unsigned chunk = 0; chunk < 1 << $bits(perf_counter_chunk); chunk = chunk + 1) begin
+            if (chunk == perf_counter_chunk) begin
+              for (int unsigned b = 0; b < 8; b = b + 1) begin
+                slv_resp_o.r.data[b*8+:8] = perf_select_q[chunk * 8 + b];
+              end
+            end
+          end
+        end
+        // Data reads of the counters
+        if (addr_masked >= ADDR_PERF_COUNTER) begin
+          automatic logic[4:0] perf_counter_idx = addr_masked[7:3];
+          slv_resp_o.r.data = perf_counters_q[perf_counter_idx];
+        end
+      end
       // send response
       slv_resp_o.r_valid = 1'b1;
       // if the response is accepted, reset read interface state
@@ -250,11 +334,11 @@ module axi_tagctrl_config #(
     wdata_masked = slv_req_i.w.data & bit_strb;
     addr_masked = mask_addr(slv_req_i.aw.addr);
 
-    do_start  = (addr_masked == 12'h008) && |(wdata_masked & 'h00000001);
-    do_resume = (addr_masked == 12'h008) && |(wdata_masked & 'h00000100);
-    do_stop   = (addr_masked == 12'h008) && |(wdata_masked & 'h00010000);
-    do_lock   = (addr_masked == 12'h008) && |(wdata_masked & 'h01000000);
-    do_config = addr_masked inside {12'h010, 12'h018, 12'h020};
+    do_start  = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h00000001);
+    do_resume = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h00000100);
+    do_stop   = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h00010000);
+    do_lock   = (addr_masked == ADDR_CONTROL) && |(wdata_masked & 'h01000000);
+    do_config = addr_masked inside {ADDR_COVERED_BASE, ADDR_COVERED_TOP, ADDR_TABLE_BASE};
     // establish if write is ignored or accepted
     accept = (do_start && (fsm_state_q == UNCONFIGURED)) ||
              (do_resume && (fsm_state_q == UNCONFIGURED)) ||
@@ -274,6 +358,16 @@ module axi_tagctrl_config #(
     write_resp_d = write_resp_q;
     slv_resp_o.aw_ready = 1'b0;
     slv_resp_o.w_ready = 1'b0;
+    // Performance counters default
+    perf_counters_d = perf_counters_q;
+    perf_select_d = perf_select_q;
+    perf_inhibit_d = perf_inhibit_q;
+    // Performance counters update
+    for (int i = 0; i < perf_counters; i = i+1) begin
+      if (!perf_inhibit_q[i]) begin
+        perf_counters_d[i] = perf_counters_q[i] + axi_tagctrl_pkg::get_perf_event(events_q, perf_select_q[i]);
+      end
+    end
     // when write request (AW & W) present and no write is pending
     if (write_valid && !write_resp_valid_q) begin
       // consume write
@@ -287,22 +381,51 @@ module axi_tagctrl_config #(
       // when write is not ignored, perform desired effect
       if (!locked_q && accept) begin
         case (addr_masked)
-          12'h008: begin
+          ADDR_CONTROL: begin
             if (do_start) cmd_start = 1'b1;
             else if (do_resume) cmd_resume = 1'b1;
             else if (do_stop) cmd_stop = 1'b1;
             if (do_lock) locked_d = 1'b1;
           end
-          12'h010: begin
+          ADDR_COVERED_BASE: begin
             covered_base_d = wdata_masked | (covered_base_q & ~bit_strb);
           end
-          12'h018: begin
+          ADDR_COVERED_TOP: begin
             covered_top_d = wdata_masked | (covered_top_q & ~bit_strb);
           end
-          12'h020: begin
+          ADDR_TABLE_BASE: begin
             table_base_d = wdata_masked | (covered_base_q & ~bit_strb);
           end
         endcase
+      end
+    end
+    if (perf_counters > 0) begin
+      // Write to counter state from config interface
+      // It doesn't matter if this is above the max counter value because
+      // the wire is just not connected to any register in that case.
+
+      // Writes to inhibit register
+      if (addr_masked == ADDR_PERF_INHIBIT) begin
+        perf_inhibit_d = (slv_req_i.w.data & bit_strb) | (perf_inhibit_q & ~bit_strb);
+      end
+      // Writes to select registers
+      if (addr_masked >= ADDR_PERF_SELECT && addr_masked < ADDR_PERF_SELECT + PERF_COUNTERS_MAX) begin
+        // We need to set up to 8 select registers. Select which "chunk" of 8 based on address bits
+        automatic logic[1:0] perf_counter_chunk = addr_masked[4:3];
+        for (int unsigned chunk = 0; chunk < 1 << $bits(perf_counter_chunk); chunk = chunk + 1) begin
+          if (chunk == perf_counter_chunk) begin
+            for (int unsigned b = 0; b < 8; b = b + 1) begin
+              if (slv_req_i.w.strb[b]) begin
+                perf_select_d[chunk * 8 + b] = wdata_masked[b*8+:8];
+              end
+            end
+          end
+        end
+      end
+      // Data writes to the counters
+      if (addr_masked >= ADDR_PERF_COUNTER) begin
+        automatic logic[4:0] perf_counter_idx = slv_req_i.aw.addr[7:3];
+        perf_counters_d[perf_counter_idx] = wdata_masked | (perf_counters_q[perf_counter_idx] & ~bit_strb);
       end
     end
 

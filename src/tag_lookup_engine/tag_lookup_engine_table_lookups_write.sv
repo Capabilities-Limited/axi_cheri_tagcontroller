@@ -49,7 +49,9 @@ module tag_lookup_engine_table_lookups_write #(
   output tag_data_req_t   leaf_data_o,
   input  logic            leaf_resp_valid_i,
   output logic            leaf_resp_ready_o,
-  input  tag_write_resp_t leaf_resp_i
+  input  tag_write_resp_t leaf_resp_i,
+  // performance events
+  output axi_tagctrl_pkg::tag_lookup_engine_table_lookups_write_events_t events_o
 );
 
   localparam int unsigned SB_IDX_W = $clog2(MAX_IN_FLIGHT);
@@ -171,6 +173,8 @@ module tag_lookup_engine_table_lookups_write #(
       sb_r[alloc_ptr_q] = sb_alloc;
     end
     sb_d = sb_r;
+    events_o.alloc = accept_req;
+    events_o.alloc_tags_zero = accept_req && !sb_alloc.write_is_nonzero;
 
     // initialize bypass signals
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
@@ -359,14 +363,25 @@ module tag_lookup_engine_table_lookups_write #(
     root_wr_done = !(curr_sb.write_is_nonzero && !curr_sb.root_is_one) || curr_sb.root_wr_received;
     leaf_wr_done = !(curr_sb.write_is_nonzero ||  curr_sb.root_is_one) || curr_sb.leaf_wr_received;
 
-    if (curr_sb.allocated && root_rd_done && root_wr_done && leaf_wr_done) begin
-      resp_valid_o = 1'b1;
-      resp_o = curr_sb.leaf_wr_resp;
-      resp_o.id = curr_sb.req.a_x_id;
+    events_o.retire_wait = 1'b0;
+    events_o.retire_wait_root = 1'b0;
+    events_o.retire_wait_leaf = 1'b0;
+    events_o.retire_root_zero = 1'b0;
+    if (curr_sb.allocated) begin
+      if (root_rd_done && root_wr_done && leaf_wr_done) begin
+        resp_valid_o = 1'b1;
+        resp_o = curr_sb.leaf_wr_resp;
+        resp_o.id = curr_sb.req.a_x_id;
 
-      if (resp_ready_i) begin
-        sb_d[retire_ptr_q].allocated = 1'b0;
-        retire_ptr_d = retire_ptr_q + 1;
+        if (resp_ready_i) begin
+          sb_d[retire_ptr_q].allocated = 1'b0;
+          retire_ptr_d = retire_ptr_q + 1;
+          events_o.retire_root_zero = !curr_sb.root_is_one;
+        end
+      end else begin
+        events_o.retire_wait = 1'b1;
+        events_o.retire_wait_root = !root_rd_done || !root_wr_done;
+        events_o.retire_wait_leaf = !leaf_wr_done;
       end
     end
   end

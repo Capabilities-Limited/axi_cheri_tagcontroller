@@ -28,7 +28,9 @@ module tag_lookup_engine_table_lookups_read #(
   output tag_req_t       leaf_req_o,
   input  logic           leaf_resp_valid_i,
   output logic           leaf_resp_ready_o,
-  input  tag_read_resp_t leaf_resp_i
+  input  tag_read_resp_t leaf_resp_i,
+  // performance events
+  output axi_tagctrl_pkg::tag_lookup_engine_table_lookups_read_events_t events_o
 );
 
   function automatic tag_req_t desc_with_addr(tag_req_t desc, axi_addr_t addr);
@@ -82,6 +84,7 @@ module tag_lookup_engine_table_lookups_read #(
     // allow consumption of incoming request if score board entry pointed at by
     // the allocation pointer isn't already allocated
     req_ready_o = !sb_q[alloc_ptr_q].allocated;
+    events_o.alloc = 1'b0;
     // if a request is presente and consumed, allocate it to the score board
     if (req_valid_i && req_ready_o) begin
       sb_alloc.allocated = 1'b1;
@@ -94,6 +97,7 @@ module tag_lookup_engine_table_lookups_read #(
       sb_alloc.og_id = req_i.a_x_id;
       alloc_ptr_d = alloc_ptr_q + 1;
       sb_r[alloc_ptr_q] = sb_alloc;
+      events_o.alloc = 1'b1;
     end
     sb_d = sb_r;
 
@@ -153,20 +157,33 @@ module tag_lookup_engine_table_lookups_read #(
     // retire scoreboard entry //
     resp_valid_o = 1'b0; // don't send any response until ...
     resp_o = '0;
-    // ... all responses are received for the entry in the retire slot
-    if (sb_r[retire_ptr_q].allocated &&
-        sb_r[retire_ptr_q].root_received &&
-        sb_r[retire_ptr_q].leaf_received) begin
-      localparam int unsigned w = $clog2($bits(sb_r[retire_ptr_q].root_resp.data));
-      if (sb_r[retire_ptr_q].root_resp.data[sb_r[retire_ptr_q].root_idx[0+:w]] == 1'b0) begin
-        resp_o = sb_r[retire_ptr_q].root_resp;
-        resp_o.data = '0;
-      end else resp_o = sb_r[retire_ptr_q].leaf_resp;
-      resp_o.id = sb_r[retire_ptr_q].og_id; // overwrite id with original request id
-      resp_valid_o = 1'b1; // send response
-      if (resp_ready_i) begin // when the response is consumed ...
-        sb_d[retire_ptr_q].allocated = 1'b0; // deallocate scoreboard entry
-        retire_ptr_d = retire_ptr_q + 1; // bump retire slot
+    events_o.retire_wait = 1'b0;
+    events_o.retire_wait_root = 1'b0;
+    events_o.retire_wait_leaf = 1'b0;
+    events_o.retire_tags_zero = 1'b0;
+    events_o.retire_root_zero = 1'b0;
+    if (sb_r[retire_ptr_q].allocated) begin
+      // ... all responses are received for the entry in the retire slot
+      if (sb_r[retire_ptr_q].root_received &&
+          sb_r[retire_ptr_q].leaf_received) begin
+        localparam int unsigned w = $clog2($bits(sb_r[retire_ptr_q].root_resp.data));
+        automatic logic root_zero = sb_r[retire_ptr_q].root_resp.data[sb_r[retire_ptr_q].root_idx[0+:w]] == 1'b0;
+        if (root_zero) begin
+          resp_o = sb_r[retire_ptr_q].root_resp;
+          resp_o.data = '0;
+        end else resp_o = sb_r[retire_ptr_q].leaf_resp;
+        resp_o.id = sb_r[retire_ptr_q].og_id; // overwrite id with original request id
+        resp_valid_o = 1'b1; // send response
+        if (resp_ready_i) begin // when the response is consumed ...
+          sb_d[retire_ptr_q].allocated = 1'b0; // deallocate scoreboard entry
+          retire_ptr_d = retire_ptr_q + 1; // bump retire slot
+          events_o.retire_tags_zero = resp_o.data == '0;
+          events_o.retire_root_zero = root_zero;
+        end
+      end else begin
+        events_o.retire_wait = 1'b1;
+        events_o.retire_wait_root = !sb_r[retire_ptr_q].root_received;
+        events_o.retire_wait_leaf = !sb_r[retire_ptr_q].leaf_received;
       end
     end
   end

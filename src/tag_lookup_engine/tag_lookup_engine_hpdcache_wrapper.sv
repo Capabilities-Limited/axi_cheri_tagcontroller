@@ -47,6 +47,10 @@ module hpdcache_wrapper #(
     input logic read_resp_ready_i[nReadPorts],
     output tag_read_resp_t read_resp_o[nReadPorts],
 
+    // cache events //
+    /////////////////////////////////////
+    output axi_tagctrl_pkg::hpdcache_events_t events_o,
+
     // tag store master interfaces //
     /////////////////////////////////
     output mem_req_t mem_req_o,
@@ -332,18 +336,17 @@ module hpdcache_wrapper #(
       .wbuf_flush_i('0),
       .wbuf_empty_o(),
 
-      // events unused
-      //.evt_cache_write_miss_o(),
-      //.evt_cache_read_miss_o (),
-      //.evt_uncached_req_o    (),
-      //.evt_cmo_req_o         (),
-      //.evt_write_req_o       (),
-      //.evt_read_req_o        (),
-      //.evt_prefetch_req_o    (),
-      //.evt_req_on_hold_o     (),
-      //.evt_rtab_rollback_o   (),
-      //.evt_stall_refill_o    (),
-      //.evt_stall_o           (),
+      .evt_cache_write_miss_o(events_o.cache_write_miss),
+      .evt_cache_read_miss_o (events_o.cache_read_miss),
+      .evt_uncached_req_o    (events_o.uncached_req),
+      .evt_cmo_req_o         (events_o.cmo_req),
+      .evt_write_req_o       (events_o.write_req),
+      .evt_read_req_o        (events_o.read_req),
+      .evt_prefetch_req_o    (events_o.prefetch_req),
+      .evt_req_on_hold_o     (events_o.req_on_hold),
+      .evt_rtab_rollback_o   (events_o.rtab_rollback),
+      .evt_stall_refill_o    (events_o.stall_refill),
+      .evt_stall_o           (events_o.stall),
 
       .cfg_enable_i                       (1'b1), // enable the cache
       .cfg_wbuf_threshold_i               (3'd2),
