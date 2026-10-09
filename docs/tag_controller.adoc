@@ -744,7 +744,7 @@ bit.
 | Indicate the associativity of the root cache.
 
 | root_cache_byte_size
-| 1024
+| 2048
 | Indicate the size of the root cache in bytes.
 
 | leaf_cache_ways

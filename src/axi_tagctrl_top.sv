@@ -10,7 +10,7 @@
 module axi_tagctrl_top #(
     parameter int unsigned grouping_factor = 256,
     parameter int unsigned root_cache_ways = 4,
-    parameter int unsigned root_cache_byte_size = 1024,
+    parameter int unsigned root_cache_byte_size = 2048,
     parameter int unsigned leaf_cache_ways = 4,
     parameter int unsigned leaf_cache_byte_size = 16384,
     parameter int unsigned tagged_chunk_size = 16,
