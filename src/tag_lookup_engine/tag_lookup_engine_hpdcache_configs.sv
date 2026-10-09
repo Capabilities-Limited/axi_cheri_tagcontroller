@@ -5,7 +5,7 @@ package lookup_engine_hpdcache_cfg_pkg;
     userCfg.paWidth = 49;
     userCfg.wordWidth = 1;
     userCfg.wordUserWidth = 1;
-    userCfg.sets = 8;
+    userCfg.sets = 16;
     userCfg.ways = 4;
     userCfg.clWords = 256;
     userCfg.reqWords = 64'd4;
