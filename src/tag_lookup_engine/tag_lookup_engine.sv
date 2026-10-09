@@ -23,7 +23,7 @@ module tag_lookup_engine #(
   parameter type axi_addr_t = logic [AxiAddrWidth-1:0],
   parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned ROOT_CACHE_WAYS = 4,
-  parameter int unsigned ROOT_CACHE_BYTE_SIZE = 1024,
+  parameter int unsigned ROOT_CACHE_BYTE_SIZE = 2048,
   parameter int unsigned LEAF_CACHE_WAYS = 4,
   parameter int unsigned LEAF_CACHE_BYTE_SIZE = 16384
 ) (
