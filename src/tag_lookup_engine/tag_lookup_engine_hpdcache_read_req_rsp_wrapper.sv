@@ -44,11 +44,12 @@ module hpdcache_read_req_rsp_wrapper #(
     if (!rst_ni) begin
       abort_pending_q <= 1'b0;
     end else begin
-      abort_pending_q <= 1'b0;
       if (read_req_valid_i && hpdcache_read_req_ready_i) begin
         shifts[read_req_i.a_x_id] <= read_req_i.a_x_addr;
         last_req_addr_tag_q <= read_req_i.a_x_addr >> HPDcacheCfg.reqOffsetWidth;
         abort_pending_q <= read_req_speculative_i;
+      end else begin
+        abort_pending_q <= 1'b0;
       end
     end
   end
