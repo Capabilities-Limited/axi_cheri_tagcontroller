@@ -74,7 +74,6 @@ module hpdcache_read_req_rsp_wrapper #(
     req.pma.uncacheable = 1'b0;
     req.pma.io = 1'b0;
     req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_WB;
-    //req.pma.wr_policy_hint = hpdcache_pkg::HPDCACHE_WR_POLICY_WT;
 
     // assign outputs
     hpdcache_read_req_o = req;
