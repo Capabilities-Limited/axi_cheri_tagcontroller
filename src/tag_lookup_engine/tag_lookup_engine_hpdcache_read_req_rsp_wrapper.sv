@@ -53,11 +53,6 @@ module hpdcache_read_req_rsp_wrapper #(
     end
   end
 
-  // connect up input / output signals
-  assign read_req_ready_o = hpdcache_read_req_ready_i;
-
-  assign hpdcache_read_req_valid_o = read_req_valid_i;
-
   always_comb begin
 
     automatic hpdcache_req_t req;
@@ -103,6 +98,11 @@ module hpdcache_read_req_rsp_wrapper #(
     resp.hit = rsp.hit;
     return resp;
   endfunction
+
+  // connect up input / output signals
+  assign read_req_ready_o = hpdcache_read_req_ready_i;
+
+  assign hpdcache_read_req_valid_o = read_req_valid_i;
 
   assign read_resp_valid_o = hpdcache_read_resp_valid_i;
   assign read_resp_o = hpdcache_read_rsp_to_tagctrl_read_rsp( hpdcache_read_resp_i
