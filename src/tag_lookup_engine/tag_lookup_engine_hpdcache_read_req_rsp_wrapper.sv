@@ -89,7 +89,7 @@ module hpdcache_read_req_rsp_wrapper #(
     req.sid = sid_i;
     req.tid = read_req_i.a_x_id;
     req.need_rsp = 1'b1;
-    req.phys_indexed = 1'b0; // TODO
+    req.phys_indexed = 1'b0;
     req.addr_tag = read_req_i.a_x_addr[HPDcacheCfg.reqOffsetWidth +: HPDcacheCfg.tagWidth];
     req.pma.uncacheable = 1'b0;
     req.pma.io = 1'b0;
