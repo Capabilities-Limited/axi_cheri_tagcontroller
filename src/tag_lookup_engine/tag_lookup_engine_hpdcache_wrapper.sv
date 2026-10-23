@@ -35,6 +35,7 @@ module hpdcache_wrapper #(
     input logic write_req_valid_i[nWritePorts],
     output logic write_req_ready_o[nWritePorts],
     input tag_req_t write_req_i[nWritePorts],
+    input logic write_req_flush_i[nWritePorts],
     // incoming write data
     input logic write_data_req_valid_i[nWritePorts],
     output logic write_data_req_ready_o[nWritePorts],
@@ -272,6 +273,7 @@ module hpdcache_wrapper #(
         .write_req_valid_i(write_req_valid_i[writePortIdx]),
         .write_req_ready_o(write_req_ready_o[writePortIdx]),
         .write_req_i(write_req_i[writePortIdx]),
+        .write_req_flush_i(write_req_flush_i[writePortIdx]),
         .write_data_req_valid_i(write_data_req_valid_i[writePortIdx]),
         .write_data_req_ready_o(write_data_req_ready_o[writePortIdx]),
         .write_data_req_i(write_data_req_i[writePortIdx]),
