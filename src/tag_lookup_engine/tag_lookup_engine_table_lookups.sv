@@ -43,6 +43,7 @@ module tag_lookup_engine_table_lookups #(
   output logic            root_write_req_valid_o[2],
   input  logic            root_write_req_ready_i[2],
   output tag_req_t        root_write_req_o[2],
+  output logic            root_write_req_flush_o[2],
   output logic            root_write_data_req_valid_o[2],
   input  logic            root_write_data_req_ready_i[2],
   output tag_data_req_t   root_write_data_req_o[2],
@@ -60,6 +61,7 @@ module tag_lookup_engine_table_lookups #(
   output logic            leaf_write_req_valid_o,
   input  logic            leaf_write_req_ready_i,
   output tag_req_t        leaf_write_req_o,
+  output logic            leaf_write_req_flush_o,
   output logic            leaf_write_data_req_valid_o,
   input  logic            leaf_write_data_req_ready_i,
   output tag_data_req_t   leaf_write_data_req_o,
@@ -77,6 +79,9 @@ module tag_lookup_engine_table_lookups #(
 
   // perform_flushing_i // TODO implement
   assign done_flushing_o = 1'b1; // TODO implement
+  assign root_write_req_flush_o[0] = 1'b0; // TODO implement
+  assign root_write_req_flush_o[1] = 1'b0; // TODO implement
+  assign leaf_write_req_flush_o = 1'b0; // TODO implement
 
   // Tie off unused leaf read port 1
   assign leaf_read_req_valid_o[1] = 1'b0;
