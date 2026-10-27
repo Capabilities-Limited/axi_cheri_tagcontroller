@@ -161,6 +161,14 @@ With the {allow_resume} parameter set, the guarantee is weakened to also allow
 returning tagged capabilities if the corresponding bits were set on the memory
 backing the tag table when the tag controller was given a {resume} command.
 
+The tag controller will write the wuser field received on the {tag_sub} to the
+tag store entry backing the referenced tagged chunk. In particular, a write to
+any subset of a tagged chunk causes its tag to be updated. In the context of
+CHERI capabilities, this implies that a write request to a strict subset of a
+capability with a wuser set is an illegal operation as it can forge a
+capability. Capability-aware bus managers are trusted to write capability tags
+appropriately associated with genuine capability data.
+
 The tag controller also aims to guarantee that it will obey AXI semantics (not
 deadlock, etc) provided the ports all follow the AXI standard, and that the
 data returned on the {tag_sub} port matches that fetched by the corresponding
