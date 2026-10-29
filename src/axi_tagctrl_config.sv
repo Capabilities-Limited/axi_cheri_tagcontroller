@@ -19,7 +19,7 @@ module axi_tagctrl_config #(
   parameter logic init_start = 1'b0,
   parameter logic init_locked = 1'b1,
   parameter logic allow_resume = 1'b0,
-  parameter logic allow_flush_when_locked = 1'b0, // TODO consider param
+  parameter logic allow_flush_when_locked = 1'b0,
   parameter int unsigned perf_counters = 1'b0
 ) (
   input logic clk_i,
@@ -379,7 +379,9 @@ module axi_tagctrl_config #(
       write_resp_d.resp = axi_pkg::RESP_OKAY;
       write_resp_d.user = '0;
       // when write is not ignored, perform desired effect
-      if (!locked_q && accept) begin
+      if (locked_q && allow_flush_when_locked && do_stop && accept) begin
+        cmd_stop = 1'b1;
+      end else if (!locked_q && accept) begin
         case (addr_masked)
           ADDR_CONTROL: begin
             if (do_start) cmd_start = 1'b1;
