@@ -15,6 +15,7 @@ module hpdcache_write_req_rsp_wrapper #(
     input logic write_req_valid_i,
     output logic write_req_ready_o,
     input tag_req_t write_req_i,
+    input logic write_req_flush_i,
 
     input logic write_data_req_valid_i,
     output logic write_data_req_ready_o,
@@ -32,7 +33,7 @@ module hpdcache_write_req_rsp_wrapper #(
   );
 
   // convert write descriptor to hpdcache request
-  function automatic hpdcache_req_t write_req_to_hpdcache_req(tag_req_t desc, tag_data_req_t wdata);
+  function automatic hpdcache_req_t write_req_to_hpdcache_req(tag_req_t desc, tag_data_req_t wdata, logic flush);
 
     hpdcache_req_t req;
 
@@ -56,7 +57,7 @@ module hpdcache_write_req_rsp_wrapper #(
     // prepare hpdcache req
     req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
     req.wdata = wdata.data >> sel;
-    req.op = hpdcache_pkg::HPDCACHE_REQ_STORE;
+    req.op = flush ? hpdcache_pkg::HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL : hpdcache_pkg::HPDCACHE_REQ_STORE;
     req.be = wdata.bit_en >> sel;
     req.size = 0;
     req.sid = sid_i;
@@ -84,7 +85,7 @@ module hpdcache_write_req_rsp_wrapper #(
   assign write_req_ready_o = write_req_valid && hpdcache_write_req_ready_i;
   assign write_data_req_ready_o = write_req_valid && hpdcache_write_req_ready_i;
   assign hpdcache_write_req_valid_o = write_req_valid;
-  assign hpdcache_write_req_o = write_req_to_hpdcache_req(write_req_i, write_data_req_i);
+  assign hpdcache_write_req_o = write_req_to_hpdcache_req(write_req_i, write_data_req_i, write_req_flush_i);
   assign write_resp_valid_o = hpdcache_write_resp_valid_i;
   assign write_resp_o = hpdcache_write_rsp_to_tagctrl_write_rsp(hpdcache_write_resp_i);
 

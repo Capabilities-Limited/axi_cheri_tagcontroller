@@ -125,6 +125,7 @@ module tag_lookup_engine #(
   logic root_write_req_valid[2], leaf_write_req_valid;
   logic root_write_req_ready[2], leaf_write_req_ready;
   tag_req_t root_write_req[2], leaf_write_req;
+  logic root_write_req_flush[2], leaf_write_req_flush;
   logic root_write_data_req_valid[2], leaf_write_data_req_valid;
   logic root_write_data_req_ready[2], leaf_write_data_req_ready;
   tag_data_req_t root_write_data_req[2], leaf_write_data_req;
@@ -187,6 +188,7 @@ module tag_lookup_engine #(
     .root_write_req_valid_o(root_write_req_valid),
     .root_write_req_ready_i(root_write_req_ready),
     .root_write_req_o(root_write_req),
+    .root_write_req_flush_o(root_write_req_flush),
     .root_write_data_req_valid_o(root_write_data_req_valid),
     .root_write_data_req_ready_i(root_write_data_req_ready),
     .root_write_data_req_o(root_write_data_req),
@@ -204,6 +206,7 @@ module tag_lookup_engine #(
     .leaf_write_req_valid_o(leaf_write_req_valid),
     .leaf_write_req_ready_i(leaf_write_req_ready),
     .leaf_write_req_o(leaf_write_req),
+    .leaf_write_req_flush_o(leaf_write_req_flush),
     .leaf_write_data_req_valid_o(leaf_write_data_req_valid),
     .leaf_write_data_req_ready_i(leaf_write_data_req_ready),
     .leaf_write_data_req_o(leaf_write_data_req),
@@ -249,6 +252,7 @@ module tag_lookup_engine #(
     .write_req_valid_i(root_write_req_valid),
     .write_req_ready_o(root_write_req_ready),
     .write_req_i(root_write_req),
+    .write_req_flush_i(root_write_req_flush),
     // incoming write data
     .write_data_req_valid_i(root_write_data_req_valid),
     .write_data_req_ready_o(root_write_data_req_ready),
@@ -281,6 +285,8 @@ module tag_lookup_engine #(
 
   tag_req_t leaf_write_req_arr[1];
   assign leaf_write_req_arr[0] = leaf_write_req;
+  logic leaf_write_req_flush_arr[1];
+  assign leaf_write_req_flush_arr[0] = leaf_write_req_flush;
 
   logic leaf_write_data_req_ready_arr[1];
   assign leaf_write_data_req_ready = leaf_write_data_req_ready_arr[0];
@@ -328,6 +334,7 @@ module tag_lookup_engine #(
     .write_req_valid_i(leaf_write_req_valid_arr),
     .write_req_ready_o(leaf_write_req_ready_arr),
     .write_req_i(leaf_write_req_arr),
+    .write_req_flush_i(leaf_write_req_flush_arr),
     // incoming write data
     .write_data_req_valid_i(leaf_write_data_req_valid_arr),
     .write_data_req_ready_o(leaf_write_data_req_ready_arr),
