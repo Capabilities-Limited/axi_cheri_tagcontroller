@@ -105,6 +105,8 @@ module axi_tagctrl_r #(
         // Should align with the mem fifo data last field, but needed for the
         // illegal_req case.
         automatic logic last = tagctrl_desc_q.a_x_len == 0;
+        automatic logic data_err = 1'b0;
+        automatic logic tag_err = 1'b0;
         if (tagc_inp_r_valid_q && (!mem_fifo_empty || tagctrl_desc_q.illegal_req)) begin
           r_chan_slv_valid_o = 1'b1;
           if (r_chan_slv_ready_i) begin
@@ -120,6 +122,8 @@ module axi_tagctrl_r #(
           );
           load_desc = r_chan_slv_ready_i;
           r_chan_slv_o = tagctrl_desc_q.illegal_req ? '0 : mem_fifo_data;
+          data_err = r_chan_slv_o.resp == axi_pkg::RESP_DECERR || r_chan_slv_o.resp == axi_pkg::RESP_SLVERR;
+          tag_err = tagc_inp_r_q.resp == axi_pkg::RESP_DECERR || tagc_inp_r_q.resp == axi_pkg::RESP_SLVERR;
           // set id filled with the one from the descriptor
           r_chan_slv_o.id = tagctrl_desc_q.a_x_id;
           // set user field with the tag bit
@@ -128,6 +132,10 @@ module axi_tagctrl_r #(
           r_chan_slv_o.last = last;
           // override resp field if required
           if (tagctrl_desc_q.x_resp != axi_pkg::RESP_OKAY) r_chan_slv_o.resp = tagctrl_desc_q.x_resp;
+          if (tag_err) begin
+            if (!data_err) r_chan_slv_o.resp = tagc_inp_r_q.resp;
+            r_chan_slv_o.user = '0;
+          end
           // load more tags if needed
           if ((tag_bit_ind == (Cfg.AxiDataWidth - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
                   Cfg.CapSize/8
