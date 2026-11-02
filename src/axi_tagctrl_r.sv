@@ -188,7 +188,7 @@ module axi_tagctrl_r #(
     tagc_inp_r_valid_d = 1'b0;
     load_tags_valid = 1'b1;
     // new descriptor at the input
-    if (!tagctrl_desc_i.tagged_req) begin
+    if (!tagctrl_desc_d.tagged_req) begin
       tagc_inp_r_d = '0;
       load_tags = 1'b1;
       tagc_inp_r_valid_d = 1'b1;
