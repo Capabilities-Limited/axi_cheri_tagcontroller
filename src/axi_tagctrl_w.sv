@@ -72,7 +72,9 @@ module axi_tagctrl_w #(
     output logic b_chan_mst_ready_o
 );
   typedef logic [Cfg.AxiIdWidth:0] axi_id_mst_t;
-  typedef logic [Cfg.AxiDataWidth-1:0] axi_data_t;
+  tagc_oup_t tag_fifo_indata;
+  localparam int unsigned TagFlitBits = $bits(tag_fifo_indata.data);
+  typedef logic [TagFlitBits-1:0] axi_data_t;
   typedef logic [Cfg.AxiAddrWidth-1:0] axi_addr_t;
   // Registers
   desc_t tagctrl_desc_d, tagctrl_desc_q;
@@ -99,14 +101,13 @@ module axi_tagctrl_w #(
 
   // auxiliary signals
   // Tag index bit (indicates if we are reading from a valid capability or not)
-  logic [$clog2(Cfg.AxiDataWidth)-1:0] tag_bit_ind;
+  logic [$clog2(TagFlitBits)-1:0] tag_bit_ind;
   // tag cache FIFO control signals
   logic tag_fifo_full;  // the FIFO is full
   logic tag_fifo_empty;  // the FIFO is full
   logic tag_fifo_push;  // push data into the FIFO
   logic tag_fifo_pop;  // pop data from FIFO if it gets transferred
   tagc_oup_t tag_fifo_data;  // gets assigned to the w channel
-  tagc_oup_t tag_fifo_indata;
   // tag cache FIFO control signals
   logic w_mst_fifo_full;  // the FIFO is full
   logic w_mst_fifo_empty;  // the FIFO is full
@@ -116,7 +117,7 @@ module axi_tagctrl_w #(
   w_chan_t w_mst_fifo_indata;
 
   // Decode tag bit index based on the address
-  assign tag_bit_ind = tagctrl_desc_q.a_x_addr[$clog2(Cfg.CapSize/8)+:$clog2(Cfg.AxiDataWidth)];
+  assign tag_bit_ind = tagctrl_desc_q.a_x_addr[$clog2(Cfg.CapSize/8)+:$clog2(TagFlitBits)];
 
   // Tag cache output assignments
   assign tagc_oup_valid_o = ~tag_fifo_empty;
@@ -197,7 +198,7 @@ module axi_tagctrl_w #(
           store_tagc_bit_en = 1'b1;
           // send a tag store package if this is the last beat or
           // the tag bits surpassed the data witdth (I might remove this in a future to improve performance)
-          if ((tag_bit_ind == (Cfg.AxiDataWidth - 1) && addr[0+:$clog2(
+          if ((tag_bit_ind == (TagFlitBits - 1) && addr[0+:$clog2(
                   Cfg.CapSize/8
               )] == 0) || w_chan_slv_i.last) begin
             if (tag_fifo_full) begin

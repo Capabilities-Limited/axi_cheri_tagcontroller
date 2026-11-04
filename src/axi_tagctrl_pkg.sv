@@ -21,8 +21,6 @@ package axi_tagctrl_pkg;
     int unsigned AxiIdWidth;
     /// AXI4+ATOP address width of the slave port from CPU side
     int unsigned AxiAddrWidth;
-    /// AXI4+ATOP data width of the slave port from CPU side
-    int unsigned AxiDataWidth;
     /// Capability size in memory
     int unsigned CapSize;
     /// Tag controller write FIFO depth
