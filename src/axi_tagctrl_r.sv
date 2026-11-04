@@ -140,7 +140,7 @@ module axi_tagctrl_r #(
           // load more tags if needed
           if ((tag_bit_ind == (TagFlitBits - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
                   Cfg.CapSize/8
-              )] == 0) && !last && r_chan_slv_ready_i) begin
+              )] == 0) && !last && r_chan_slv_ready_i && !tagctrl_desc_q.illegal_req) begin
             get_tags();
           end
           if (last && r_chan_slv_ready_i) begin

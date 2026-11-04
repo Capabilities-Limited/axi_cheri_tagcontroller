@@ -303,10 +303,11 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg       (Cfg),
-      .desc_t    (desc_t),
-      .ax_chan_t (slv_ar_chan_t),
-      .axi_addr_t(axi_addr_t)
+      .Cfg        (Cfg),
+      .TagFlitBits(leaf_flit_bits),
+      .desc_t     (desc_t),
+      .ax_chan_t  (slv_ar_chan_t),
+      .axi_addr_t (axi_addr_t)
   ) axi_tag_ctrl_ar (
       .clk_i,
       .rst_ni,
@@ -375,10 +376,11 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg       (Cfg),
-      .desc_t    (desc_t),
-      .ax_chan_t (slv_aw_chan_t),
-      .axi_addr_t(axi_addr_t)
+      .Cfg        (Cfg),
+      .TagFlitBits(leaf_flit_bits),
+      .desc_t     (desc_t),
+      .ax_chan_t  (slv_aw_chan_t),
+      .axi_addr_t (axi_addr_t)
   ) axi_tag_ctrl_aw (
       .clk_i,
       .rst_ni,
