@@ -59,6 +59,7 @@ module axi_tagctrl_r #(
       state_d, state_q;
   // AXI tag cache channel signals
   tagc_inp_t tagc_inp_r_d, tagc_inp_r_q;
+  localparam int unsigned TagFlitBits = $bits(tagc_inp_r_q.data);
   logic tagc_inp_r_valid_d, tagc_inp_r_valid_q;
   logic load_tags, load_tags_valid;
   // MEM FIFO control signals
@@ -70,13 +71,13 @@ module axi_tagctrl_r #(
   r_chan_t mem_fifo_indata;
   // auxiliary signals
   // Tag index bit (indicates if we are reading from a valid capability or not)
-  logic [$clog2(Cfg.AxiDataWidth)-1:0] tag_bit_ind;
+  logic [$clog2(TagFlitBits)-1:0] tag_bit_ind;
 
   // AXI Slave R port channel assignments
   // AXI Master R port channel assignments
   assign r_chan_ready_o = !mem_fifo_full;
   // Decode tag bit index based on the address
-  assign tag_bit_ind = tagctrl_desc_q.a_x_addr[$clog2(Cfg.CapSize/8)+:$clog2(Cfg.AxiDataWidth)];
+  assign tag_bit_ind = tagctrl_desc_q.a_x_addr[$clog2(Cfg.CapSize/8)+:$clog2(TagFlitBits)];
 
   always_comb begin : r_chan_ctrl
     // registers default values
@@ -137,7 +138,7 @@ module axi_tagctrl_r #(
             r_chan_slv_o.user = '0;
           end
           // load more tags if needed
-          if ((tag_bit_ind == (Cfg.AxiDataWidth - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
+          if ((tag_bit_ind == (TagFlitBits - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
                   Cfg.CapSize/8
               )] == 0) && !last && r_chan_slv_ready_i) begin
             get_tags();
