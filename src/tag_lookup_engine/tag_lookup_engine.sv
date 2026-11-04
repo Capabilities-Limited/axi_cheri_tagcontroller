@@ -22,8 +22,10 @@ module tag_lookup_engine #(
   parameter type mem_resp_t = logic,
   parameter type axi_addr_t = logic [AxiAddrWidth-1:0],
   parameter int unsigned GROUPING_FACTOR = 256,
+  parameter int unsigned ROOT_FLIT_BITS = 4,
   parameter int unsigned ROOT_CACHE_WAYS = 4,
   parameter int unsigned ROOT_CACHE_BYTE_SIZE = 2048,
+  parameter int unsigned LEAF_FLIT_BITS = 4,
   parameter int unsigned LEAF_CACHE_WAYS = 4,
   parameter int unsigned LEAF_CACHE_BYTE_SIZE = 16384
 ) (
@@ -109,11 +111,11 @@ module tag_lookup_engine #(
   localparam int unsigned nRootReadPorts = 64'd2;
   localparam int unsigned nRootWritePorts = 64'd2;
   localparam hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_cfg =
-    make_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts, ROOT_CACHE_WAYS, ROOT_CACHE_BYTE_SIZE);
+    make_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts, ROOT_CACHE_WAYS, ROOT_CACHE_BYTE_SIZE, ROOT_FLIT_BITS, AxiDataWidth);
   localparam int unsigned nLeafReadPorts = 64'd2;
   localparam int unsigned nLeafWritePorts = 64'd1;
   localparam hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_cfg =
-    make_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts, LEAF_CACHE_WAYS, LEAF_CACHE_BYTE_SIZE);
+    make_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts, LEAF_CACHE_WAYS, LEAF_CACHE_BYTE_SIZE, LEAF_FLIT_BITS, AxiDataWidth);
 
   //////////////////////////////////////////////////////////////////////////////
   // local signals for per table-level accesses (root, leaf)
