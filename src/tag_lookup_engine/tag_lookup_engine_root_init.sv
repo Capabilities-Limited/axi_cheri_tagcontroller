@@ -1,6 +1,6 @@
 module tag_lookup_engine_root_init #(
   parameter type tag_req_t = logic,
-  parameter type tag_data_req_t = logic,
+  parameter type root_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
   parameter type axi_addr_t = logic,
   parameter int unsigned BITS_PER_ROOT_FLIT = 4
@@ -16,7 +16,7 @@ module tag_lookup_engine_root_init #(
   output tag_req_t        root_write_req_o,
   output logic            root_write_data_req_valid_o,
   input  logic            root_write_data_req_ready_i,
-  output tag_data_req_t   root_write_data_req_o,
+  output root_data_req_t  root_write_data_req_o,
   input  logic            root_write_resp_valid_i,
   output logic            root_write_resp_ready_o,
   input  tag_write_resp_t root_write_resp_i

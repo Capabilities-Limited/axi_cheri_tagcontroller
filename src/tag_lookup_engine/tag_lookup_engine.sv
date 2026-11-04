@@ -6,6 +6,7 @@
 // * an axi_mux to produce a single stream of tag requests
 
 `include "axi/typedef.svh"
+`include "axi_tagctrl/typedef.svh"
 
 import lookup_engine_hpdcache_cfg_pkg::*;
 
@@ -107,6 +108,12 @@ module tag_lookup_engine #(
   `AXI_TYPEDEF_AR_CHAN_T(mst_ar_chan_t, axi_addr_t, axi_mst_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(mst_r_chan_t, axi_data_t, axi_mst_id_t, axi_user_t)
 
+  `AXI_TAGCTRL_TYPEDEF_READ_RESP_T(root_read_resp_t, axi_slv_id_t, logic [ROOT_FLIT_BITS-1:0])
+  `AXI_TAGCTRL_TYPEDEF_DATA_REQ_T(root_data_req_t, logic [ROOT_FLIT_BITS-1:0])
+
+  typedef tag_read_resp_t leaf_read_resp_t;
+  typedef tag_data_req_t leaf_data_req_t;
+
   // HPDCache wrapper parameters for root and leaf caches
   localparam int unsigned nRootReadPorts = 64'd2;
   localparam int unsigned nRootWritePorts = 64'd2;
@@ -130,13 +137,15 @@ module tag_lookup_engine #(
   logic root_write_req_flush[2], leaf_write_req_flush;
   logic root_write_data_req_valid[2], leaf_write_data_req_valid;
   logic root_write_data_req_ready[2], leaf_write_data_req_ready;
-  tag_data_req_t root_write_data_req[2], leaf_write_data_req;
+  root_data_req_t root_write_data_req[2];
+  leaf_data_req_t leaf_write_data_req;
   logic root_write_resp_valid[2], leaf_write_resp_valid;
   logic root_write_resp_ready[2], leaf_write_resp_ready;
   tag_write_resp_t root_write_resp[2], leaf_write_resp;
   logic root_read_resp_valid[2], leaf_read_resp_valid[2];
   logic root_read_resp_ready[2], leaf_read_resp_ready[2];
-  tag_read_resp_t root_read_resp[2], leaf_read_resp[2];
+  root_read_resp_t root_read_resp[2];
+  leaf_read_resp_t leaf_read_resp[2];
 
   slv_req_t root_mem_req, leaf_mem_req;
   slv_resp_t root_mem_resp, leaf_mem_resp;
@@ -146,9 +155,11 @@ module tag_lookup_engine #(
   //////////////////////////////////////////////////////////////////////////////
   tag_lookup_engine_table_lookups #(
     .tag_req_t(tag_req_t),
-    .tag_data_req_t(tag_data_req_t),
+    .leaf_data_req_t(leaf_data_req_t),
+    .root_data_req_t(root_data_req_t),
     .tag_write_resp_t(tag_write_resp_t),
-    .tag_read_resp_t(tag_read_resp_t),
+    .leaf_read_resp_t(leaf_read_resp_t),
+    .root_read_resp_t(root_read_resp_t),
     .axi_addr_t(axi_addr_t),
     .axi_slv_id_t(axi_slv_id_t),
     .GROUPING_FACTOR(GROUPING_FACTOR),
@@ -228,9 +239,9 @@ module tag_lookup_engine #(
   // root accesses
   hpdcache_wrapper #(
     .tag_req_t(tag_req_t),
-    .tag_data_req_t(tag_data_req_t),
+    .tag_data_req_t(root_data_req_t),
     .tag_write_resp_t(tag_write_resp_t),
-    .tag_read_resp_t(tag_read_resp_t),
+    .tag_read_resp_t(root_read_resp_t),
     .nReadPorts(nRootReadPorts),
     .nWritePorts(nRootWritePorts),
     .AxiIdWidth(AxiMstIdWidth-1),
@@ -296,7 +307,7 @@ module tag_lookup_engine #(
   logic leaf_write_data_req_valid_arr[1];
   assign leaf_write_data_req_valid_arr[0] = leaf_write_data_req_valid;
 
-  tag_data_req_t leaf_write_data_req_arr[1];
+  leaf_data_req_t leaf_write_data_req_arr[1];
   assign leaf_write_data_req_arr[0] = leaf_write_data_req;
 
   logic leaf_write_resp_ready_arr[1];
@@ -310,9 +321,9 @@ module tag_lookup_engine #(
 
   hpdcache_wrapper #(
     .tag_req_t(tag_req_t),
-    .tag_data_req_t(tag_data_req_t),
+    .tag_data_req_t(leaf_data_req_t),
     .tag_write_resp_t(tag_write_resp_t),
-    .tag_read_resp_t(tag_read_resp_t),
+    .tag_read_resp_t(leaf_read_resp_t),
     .nReadPorts(nLeafReadPorts),
     .nWritePorts(nLeafWritePorts),
     .AxiIdWidth(AxiMstIdWidth-1),
