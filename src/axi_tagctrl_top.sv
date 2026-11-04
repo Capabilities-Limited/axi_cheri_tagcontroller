@@ -127,7 +127,6 @@ module axi_tagctrl_top #(
   typedef struct packed {
     axi_data_t data;    // input data
     axi_data_t bit_en;  // write bit enable
-    axi_strb_t strb;    // write enable (equals AXI strb)
   } tagc_oup_t;
 
   typedef struct packed {
