@@ -84,6 +84,7 @@ module axi_tagctrl_top #(
     input mst_resp_t untagged_mgr_resp_i
 );
   `include "axi/typedef.svh"
+  `include "axi_tagctrl/typedef.svh"
 
   typedef logic [axi_id_width-1:0] axi_slv_id_t;
   typedef logic [axi_id_width:0] axi_mst_id_t;
@@ -127,20 +128,9 @@ module axi_tagctrl_top #(
   // flit of tags exchanged with the tag lookup engine
   typedef logic [leaf_flit_bits-1:0] tag_flit_t;
 
-  // struct to pass between the tag controller and the tag cache
-  typedef struct packed {
-    tag_flit_t data;    // input data
-    tag_flit_t bit_en;  // write bit enable
-  } tagc_oup_t;
-
-  typedef struct packed {
-    axi_slv_id_t    id;    // AXI id of the count operation
-    tag_flit_t      data;  // read data from the way
-    axi_pkg::resp_t resp;
-    logic           last;
-    logic           aborted;
-    logic           hit;
-  } tagc_inp_t;
+  // structs to pass between the tag controller and the tag cache
+  `AXI_TAGCTRL_TYPEDEF_DATA_REQ_T(tagc_oup_t, tag_flit_t)
+  `AXI_TAGCTRL_TYPEDEF_READ_RESP_T(tagc_inp_t, axi_slv_id_t, tag_flit_t)
 
   // R tag bits payload between the tag cache and tag controller
   tagc_inp_t tagc_r_inp;
