@@ -1,35 +1,36 @@
 module tag_lookup_engine_table_lookups_read #(
   parameter type tag_req_t = logic,
-  parameter type tag_read_resp_t = logic,
+  parameter type leaf_read_resp_t = logic,
+  parameter type root_read_resp_t = logic,
   parameter type axi_addr_t = logic,
   parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned MAX_IN_FLIGHT = 4
 ) (
-  input  logic           clk_i,
-  input  logic           rst_ni,
+  input  logic            clk_i,
+  input  logic            rst_ni,
   // incoming interface
-  input  axi_addr_t      root_idx_i,
-  input  logic           req_valid_i,
-  output logic           req_ready_o,
-  input  tag_req_t       req_i,
-  output logic           resp_valid_o,
-  input  logic           resp_ready_i,
-  output tag_read_resp_t resp_o,
+  input  axi_addr_t       root_idx_i,
+  input  logic            req_valid_i,
+  output logic            req_ready_o,
+  input  tag_req_t        req_i,
+  output logic            resp_valid_o,
+  input  logic            resp_ready_i,
+  output leaf_read_resp_t resp_o,
   // outgoing root interface
-  output logic           root_req_valid_o,
-  input  logic           root_req_ready_i,
-  output tag_req_t       root_req_o,
-  input  logic           root_resp_valid_i,
-  output logic           root_resp_ready_o,
-  input  tag_read_resp_t root_resp_i,
+  output logic            root_req_valid_o,
+  input  logic            root_req_ready_i,
+  output tag_req_t        root_req_o,
+  input  logic            root_resp_valid_i,
+  output logic            root_resp_ready_o,
+  input  root_read_resp_t root_resp_i,
   // outgoing leaf interface
-  output logic           leaf_req_valid_o,
-  input  logic           leaf_req_ready_i,
-  output tag_req_t       leaf_req_o,
-  output logic           leaf_req_speculative_o,
-  input  logic           leaf_resp_valid_i,
-  output logic           leaf_resp_ready_o,
-  input  tag_read_resp_t leaf_resp_i,
+  output logic            leaf_req_valid_o,
+  input  logic            leaf_req_ready_i,
+  output tag_req_t        leaf_req_o,
+  output logic            leaf_req_speculative_o,
+  input  logic            leaf_resp_valid_i,
+  output logic            leaf_resp_ready_o,
+  input  leaf_read_resp_t leaf_resp_i,
   // performance events
   output axi_tagctrl_pkg::tag_lookup_engine_table_lookups_read_events_t events_o
 );
@@ -51,8 +52,8 @@ module tag_lookup_engine_table_lookups_read #(
     logic leaf_sent;
     logic root_received;
     logic leaf_received;
-    tag_read_resp_t root_resp;
-    tag_read_resp_t leaf_resp;
+    root_read_resp_t root_resp;
+    leaf_read_resp_t leaf_resp;
     axi_addr_t root_idx;
     tag_req_t req_payload;
     logic [$bits(req_i.a_x_id)-1:0] og_id;
@@ -213,8 +214,11 @@ module tag_lookup_engine_table_lookups_read #(
 
           if (!retry_needed) begin
             if (!root_has_leaf) begin
-              resp_o = sb_r[retire_ptr_q].root_resp;
-              resp_o.data = '0;
+              // no leaf: all tags are zero (resp_o initialised to '0)
+              resp_o.resp = sb_r[retire_ptr_q].root_resp.resp;
+              resp_o.last = sb_r[retire_ptr_q].root_resp.last;
+              resp_o.aborted = sb_r[retire_ptr_q].root_resp.aborted;
+              resp_o.hit = sb_r[retire_ptr_q].root_resp.hit;
             end else resp_o = sb_r[retire_ptr_q].leaf_resp;
             resp_o.id = sb_r[retire_ptr_q].og_id; // overwrite id with original request id
             resp_valid_o = 1'b1; // send response

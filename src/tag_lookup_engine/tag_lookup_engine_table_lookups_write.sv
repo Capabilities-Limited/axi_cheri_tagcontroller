@@ -1,8 +1,9 @@
 module tag_lookup_engine_table_lookups_write #(
   parameter type tag_req_t = logic,
-  parameter type tag_data_req_t = logic,
+  parameter type leaf_data_req_t = logic,
+  parameter type root_data_req_t = logic,
+  parameter type root_read_resp_t = logic,
   parameter type tag_write_resp_t = logic,
-  parameter type tag_read_resp_t = logic,
   parameter type axi_addr_t = logic,
   parameter type axi_slv_id_t = logic,
   parameter int unsigned GROUPING_FACTOR = 256,
@@ -19,7 +20,7 @@ module tag_lookup_engine_table_lookups_write #(
   input  tag_req_t        req_i,
   input  logic            data_valid_i,
   output logic            data_ready_o,
-  input  tag_data_req_t   data_i,
+  input  leaf_data_req_t  data_i,
   output logic            resp_valid_o,
   input  logic            resp_ready_i,
   output tag_write_resp_t resp_o,
@@ -29,14 +30,14 @@ module tag_lookup_engine_table_lookups_write #(
   output tag_req_t        root_rd_req_o,
   input  logic            root_rd_resp_valid_i,
   output logic            root_rd_resp_ready_o,
-  input  tag_read_resp_t  root_rd_resp_i,
+  input  root_read_resp_t root_rd_resp_i,
   // outgoing root write interface
   output logic            root_req_valid_o,
   input  logic            root_req_ready_i,
   output tag_req_t        root_req_o,
   output logic            root_data_valid_o,
   input  logic            root_data_ready_i,
-  output tag_data_req_t   root_data_o,
+  output root_data_req_t  root_data_o,
   input  logic            root_resp_valid_i,
   output logic            root_resp_ready_o,
   input  tag_write_resp_t root_resp_i,
@@ -46,7 +47,7 @@ module tag_lookup_engine_table_lookups_write #(
   output tag_req_t        leaf_req_o,
   output logic            leaf_data_valid_o,
   input  logic            leaf_data_ready_i,
-  output tag_data_req_t   leaf_data_o,
+  output leaf_data_req_t  leaf_data_o,
   input  logic            leaf_resp_valid_i,
   output logic            leaf_resp_ready_o,
   input  tag_write_resp_t leaf_resp_i,
@@ -55,7 +56,7 @@ module tag_lookup_engine_table_lookups_write #(
 );
 
   localparam int unsigned SB_IDX_W = $clog2(MAX_IN_FLIGHT);
-  localparam int unsigned ROOT_DATA_W = $bits(data_i.data);
+  localparam int unsigned ROOT_DATA_W = $bits(root_data_o.data);
   localparam int unsigned ROOT_BIT_IDX_W = (ROOT_DATA_W > 1) ? $clog2(ROOT_DATA_W) : 1;
   localparam int unsigned LEAF_FLITS = (GROUPING_FACTOR + BITS_PER_LEAF_FLIT - 1) / BITS_PER_LEAF_FLIT;
   localparam int unsigned FLIT_CNT_W = (LEAF_FLITS > 1) ? $clog2(LEAF_FLITS) : 1;
@@ -99,7 +100,7 @@ module tag_lookup_engine_table_lookups_write #(
     logic leaf_wr_resp;
     axi_addr_t root_idx;
     tag_req_t req;
-    tag_data_req_t data;
+    leaf_data_req_t data;
   } sb_entry_t;
 
   sb_entry_t [MAX_IN_FLIGHT-1:0] sb_d, sb_q;
