@@ -54,7 +54,6 @@ module tag_lookup_engine_root_init #(
     root_write_req_o.x_last = 1'b1;
     root_write_data_req_o = '0;
     root_write_data_req_o.bit_en = '1;
-    root_write_data_req_o.strb = '1;
   end
 
   // track hand shakes on each of req/data/resp channels

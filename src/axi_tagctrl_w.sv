@@ -210,7 +210,6 @@ module axi_tagctrl_w #(
               if (!w_mst_fifo_full) begin
                 tag_fifo_push = tagctrl_desc_q.tagged_req;
                 tag_fifo_indata.data = tagc_w_data_d;
-                tag_fifo_indata.strb = 8'b11111111;
                 tag_fifo_indata.bit_en = tagc_w_bit_en_d;
                 tagc_w_bit_en_d = '0;
                 store_tagc_bit_en = 1'b1;
