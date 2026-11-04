@@ -55,7 +55,6 @@ module tag_lookup_engine_table_lookups_write #(
 );
 
   localparam int unsigned SB_IDX_W = $clog2(MAX_IN_FLIGHT);
-  localparam int unsigned ROOT_STRB_W = $bits(data_i.strb);
   localparam int unsigned ROOT_DATA_W = $bits(data_i.data);
   localparam int unsigned ROOT_BIT_IDX_W = (ROOT_DATA_W > 1) ? $clog2(ROOT_DATA_W) : 1;
   localparam int unsigned LEAF_FLITS = (GROUPING_FACTOR + BITS_PER_LEAF_FLIT - 1) / BITS_PER_LEAF_FLIT;
@@ -252,7 +251,6 @@ module tag_lookup_engine_table_lookups_write #(
           root_data_valid_o = 1'b1;
           root_data_o.data = ROOT_DATA_W'('b1) << bit_idx;
           root_data_o.bit_en = ROOT_DATA_W'('b1) << bit_idx;
-          root_data_o.strb = ROOT_STRB_W'('b1) << (bit_idx >> 3);
           if (root_data_ready_i) root_wr_data_sent = 1'b1;
         end
         sb_d[req_idx].root_wr_sent = root_wr_sent;
@@ -317,14 +315,12 @@ module tag_lookup_engine_table_lookups_write #(
 
             leaf_data_o.data = sb_r[req_idx].data.data;
             leaf_data_o.bit_en = sb_r[req_idx].data.bit_en;
-            leaf_data_o.strb = sb_r[req_idx].data.strb;
             // if root was 0, need 0 leaf line synthesis, so 0 flits for the flits that aren't the one pointed at,
             // and write all bits from the pointed flit (0-ing the untouched capabilies as well)
             if (sb_r[req_idx].write_is_nonzero && !sb_r[req_idx].root_is_one) begin
               leaf_data_o.data = (leaf_wr_current_data_flit == leaf_wr_target_flit) ? sb_r[req_idx].data.data & sb_r[req_idx].data.bit_en
                                                                                     : '0;
               leaf_data_o.bit_en = '1;
-              leaf_data_o.strb = '1;
             end
             leaf_data_valid_o = 1'b1;
             // send the data
