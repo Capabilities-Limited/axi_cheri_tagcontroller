@@ -74,6 +74,7 @@ module axi_tagctrl_ax #(
 
   // Register to hold incoming AXI transaction
   ax_chan_t slv_chan_d, slv_chan_q;
+  logic slv_illegal_d, slv_illegal_q;
   logic slv_chan_valid_d, slv_chan_valid_q;
   logic load_slv_chan, load_slv_chan_valid;
 
@@ -93,7 +94,7 @@ module axi_tagctrl_ax #(
   assign tagc_desc_o = tagc_desc_q;
   assign tagc_valid_o = tagc_desc_valid_q;
   assign ax_mem_chan_mst_o = slv_chan_q;
-  assign ax_mem_chan_valid_o = slv_chan_valid_q && !illegal_req;
+  assign ax_mem_chan_valid_o = slv_chan_valid_q && !slv_illegal_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
   assign tag_addr = $unsigned(ax_chan_slv_i.addr - covered_base_addr_i) >> $clog2(Cfg.CapSize / 8);
   assign tagged_req = !ignore_tags_i
@@ -115,13 +116,14 @@ module axi_tagctrl_ax #(
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
     slv_chan_d = slv_chan_q;
+    slv_illegal_d = slv_illegal_q;
     load_slv_chan = 1'b0;
     slv_chan_valid_d = slv_chan_valid_q;
     load_slv_chan_valid = 1'b0;
 
     if (slv_chan_valid_q) begin
       // send new request transaction
-      if (ax_mem_chan_ready_i || illegal_req) begin
+      if (ax_mem_chan_ready_i || slv_illegal_q) begin
         slv_chan_valid_d = 1'b0;
         load_slv_chan_valid = 1'b1;
       end
@@ -130,6 +132,7 @@ module axi_tagctrl_ax #(
       if (ax_chan_valid_i && ax_chan_ready_o) begin
         slv_chan_d = ax_chan_slv_i;
         slv_chan_d.id = id_mst_t'(axi_tagctrl_pkg::AxReqId);
+        slv_illegal_d = illegal_req;
         load_slv_chan = 1'b1;
         slv_chan_valid_d = 1'b1;
         load_slv_chan_valid = 1'b1;
@@ -213,6 +216,7 @@ module axi_tagctrl_ax #(
 
   // Registers
   `FFLARN(slv_chan_q, slv_chan_d, load_slv_chan, ax_chan_t'{default: '0}, clk_i, rst_ni)
+  `FFLARN(slv_illegal_q, slv_illegal_d, load_slv_chan, 1'b0, clk_i, rst_ni)
   `FFLARN(slv_chan_valid_q, slv_chan_valid_d, load_slv_chan_valid, 1'b0, clk_i, rst_ni)
   `FFLARN(tagc_desc_q, tagc_desc_d, load_tagc_desc, desc_t'{default: '0}, clk_i, rst_ni)
   `FFLARN(tagc_desc_valid_q, tagc_desc_valid_d, load_tagc_desc_valid, 1'b0, clk_i, rst_ni)
