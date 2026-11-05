@@ -169,7 +169,7 @@ module axi_tagctrl_ax #(
             default: '0
         };
         load_tagc_desc = 1'b1;
-        tagc_desc_valid_d = tagged_req;
+        tagc_desc_valid_d = tagged_req && !illegal_req;
         load_tagc_desc_valid = 1'b1;
       end
     end
@@ -201,7 +201,7 @@ module axi_tagctrl_ax #(
             x_last: 1'b1,
             x_resp: illegal_req ? axi_pkg::RESP_DECERR : axi_pkg::RESP_OKAY,
             illegal_req: illegal_req,
-            tagged_req: tagged_req,
+            tagged_req: tagged_req && !illegal_req,
             default: '0
         };
         load_tagctrl_desc = 1'b1;
