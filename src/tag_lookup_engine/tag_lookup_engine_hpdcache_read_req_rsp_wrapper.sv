@@ -62,7 +62,7 @@ module hpdcache_read_req_rsp_wrapper #(
     req.wdata = 0; // read req, no data
     req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
     req.be = 0; // read req, no byte enable
-    req.size = 0;
+    req.size = $clog2(HPDcacheCfg.u.reqWords / 8);
     req.sid = sid_i;
     req.tid = read_req_i.a_x_id;
     req.need_rsp = 1'b1;
