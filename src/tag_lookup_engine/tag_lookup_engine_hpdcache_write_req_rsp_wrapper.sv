@@ -55,7 +55,7 @@ module hpdcache_write_req_rsp_wrapper #(
     req.wdata = wdata.data;
     req.op = flush ? hpdcache_pkg::HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL : hpdcache_pkg::HPDCACHE_REQ_STORE;
     req.be = wdata.bit_en;
-    req.size = 0;
+    req.size = $clog2(HPDcacheCfg.u.reqWords / 8);
     req.sid = sid_i;
     req.tid = desc.a_x_id;
     req.need_rsp = 1'b1;
