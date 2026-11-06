@@ -14,6 +14,14 @@ packages:
     dependencies:
     - common_cells
     - common_verification
+  axi_capltd:
+    revision: 124fda1ea39ffe3cf779d4c8f75b5e1963eef72c
+    version: null
+    source:
+      Git: https://github.com/Capabilities-Limited/pulp_axi.git
+    dependencies:
+    - axi
+    - common_cells
   common_cells:
     revision: 1281545696eb3fcba50ec5b4275993476a3c710e
     version: 1.40.0
