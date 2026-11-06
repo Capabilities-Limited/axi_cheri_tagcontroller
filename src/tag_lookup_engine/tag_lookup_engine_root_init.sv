@@ -1,6 +1,6 @@
 module tag_lookup_engine_root_init #(
   parameter type tag_req_t = logic,
-  parameter type tag_data_req_t = logic,
+  parameter type root_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
   parameter type axi_addr_t = logic,
   parameter int unsigned BITS_PER_ROOT_FLIT = 4
@@ -16,7 +16,7 @@ module tag_lookup_engine_root_init #(
   output tag_req_t        root_write_req_o,
   output logic            root_write_data_req_valid_o,
   input  logic            root_write_data_req_ready_i,
-  output tag_data_req_t   root_write_data_req_o,
+  output root_data_req_t  root_write_data_req_o,
   input  logic            root_write_resp_valid_i,
   output logic            root_write_resp_ready_o,
   input  tag_write_resp_t root_write_resp_i
@@ -43,6 +43,10 @@ module tag_lookup_engine_root_init #(
     end
   end
 
+  axi_addr_t root_table_bits;
+  assign root_table_bits = ((root_table_size_i * 8 + BITS_PER_ROOT_FLIT - 1) / BITS_PER_ROOT_FLIT)
+                           * BITS_PER_ROOT_FLIT;
+
   // assert ready_o when in READY state
   assign ready_o = (state_q == READY);
 
@@ -54,7 +58,6 @@ module tag_lookup_engine_root_init #(
     root_write_req_o.x_last = 1'b1;
     root_write_data_req_o = '0;
     root_write_data_req_o.bit_en = '1;
-    root_write_data_req_o.strb = '1;
   end
 
   // track hand shakes on each of req/data/resp channels
@@ -92,7 +95,7 @@ module tag_lookup_engine_root_init #(
         // book keeping based on handshake happening
         if (req_hs) req_cnt_d = req_cnt_q + 1'b1;
         // check whether the last request was sent
-        if (req_hs && (req_cnt_q * BITS_PER_ROOT_FLIT == root_table_size_i * 8 - BITS_PER_ROOT_FLIT)) begin
+        if (req_hs && (req_cnt_q * BITS_PER_ROOT_FLIT == root_table_bits - BITS_PER_ROOT_FLIT)) begin
           state_d = INIT_WAIT_WRITE_RSP;
         end
         // book keep for responses
@@ -106,7 +109,7 @@ module tag_lookup_engine_root_init #(
         root_write_resp_ready_o = 1'b1;
         if (resp_hs) resp_cnt_d = resp_cnt_q + 1'b1;
         // check whether the last response was received
-        if (resp_cnt_d * BITS_PER_ROOT_FLIT == root_table_size_i * 8) begin
+        if (resp_cnt_d * BITS_PER_ROOT_FLIT == root_table_bits) begin
           state_d = READY;
         end
       end

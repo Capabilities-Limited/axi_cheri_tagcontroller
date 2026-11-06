@@ -9,8 +9,10 @@
 
 module axi_tagctrl_top #(
     parameter int unsigned grouping_factor = 256,
+    parameter int unsigned root_flit_bits = 4,
     parameter int unsigned root_cache_ways = 4,
     parameter int unsigned root_cache_byte_size = 2048,
+    parameter int unsigned leaf_flit_bits = 4,
     parameter int unsigned leaf_cache_ways = 4,
     parameter int unsigned leaf_cache_byte_size = 16384,
     parameter int unsigned tagged_chunk_size = 16,
@@ -82,6 +84,7 @@ module axi_tagctrl_top #(
     input mst_resp_t untagged_mgr_resp_i
 );
   `include "axi/typedef.svh"
+  `include "axi_tagctrl/typedef.svh"
 
   typedef logic [axi_id_width-1:0] axi_slv_id_t;
   typedef logic [axi_id_width:0] axi_mst_id_t;
@@ -103,7 +106,6 @@ module axi_tagctrl_top #(
 '{
       AxiIdWidth: axi_id_width,
       AxiAddrWidth: axi_addr_width,
-      AxiDataWidth: axi_data_width,
       CapSize: cap_size,
       TagWFifoDepth: 4,
       TagAXFifoDepth: 4,
@@ -123,21 +125,12 @@ module axi_tagctrl_top #(
     logic illegal_req;  // Request tries to directly access tags
   } desc_t;
 
-  // struct to pass between the tag controller and the tag cache
-  typedef struct packed {
-    axi_data_t data;    // input data
-    axi_data_t bit_en;  // write bit enable
-    axi_strb_t strb;    // write enable (equals AXI strb)
-  } tagc_oup_t;
+  // flit of tags exchanged with the tag lookup engine
+  typedef logic [leaf_flit_bits-1:0] tag_flit_t;
 
-  typedef struct packed {
-    axi_slv_id_t    id;    // AXI id of the count operation
-    axi_data_t      data;  // read data from the way
-    axi_pkg::resp_t resp;
-    logic           last;
-    logic           aborted;
-    logic           hit;
-  } tagc_inp_t;
+  // structs to pass between the tag controller and the tag cache
+  `AXI_TAGCTRL_TYPEDEF_DATA_REQ_T(tagc_oup_t, tag_flit_t)
+  `AXI_TAGCTRL_TYPEDEF_READ_RESP_T(tagc_inp_t, axi_slv_id_t, tag_flit_t)
 
   // R tag bits payload between the tag cache and tag controller
   tagc_inp_t tagc_r_inp;
@@ -259,8 +252,10 @@ module axi_tagctrl_top #(
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t),
     .GROUPING_FACTOR(grouping_factor),
+    .ROOT_FLIT_BITS(root_flit_bits),
     .ROOT_CACHE_WAYS(root_cache_ways),
     .ROOT_CACHE_BYTE_SIZE(root_cache_byte_size),
+    .LEAF_FLIT_BITS(leaf_flit_bits),
     .LEAF_CACHE_WAYS(leaf_cache_ways),
     .LEAF_CACHE_BYTE_SIZE(leaf_cache_byte_size)
   ) i_tag_lookup_engine (
@@ -308,10 +303,11 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg       (Cfg),
-      .desc_t    (desc_t),
-      .ax_chan_t (slv_ar_chan_t),
-      .axi_addr_t(axi_addr_t)
+      .Cfg        (Cfg),
+      .TagFlitBits(leaf_flit_bits),
+      .desc_t     (desc_t),
+      .ax_chan_t  (slv_ar_chan_t),
+      .axi_addr_t (axi_addr_t)
   ) axi_tag_ctrl_ar (
       .clk_i,
       .rst_ni,
@@ -380,10 +376,11 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg       (Cfg),
-      .desc_t    (desc_t),
-      .ax_chan_t (slv_aw_chan_t),
-      .axi_addr_t(axi_addr_t)
+      .Cfg        (Cfg),
+      .TagFlitBits(leaf_flit_bits),
+      .desc_t     (desc_t),
+      .ax_chan_t  (slv_aw_chan_t),
+      .axi_addr_t (axi_addr_t)
   ) axi_tag_ctrl_aw (
       .clk_i,
       .rst_ni,

@@ -9,6 +9,8 @@
 module axi_tagctrl_ax #(
     /// Tag Controller configuration struct. Passed down from `axi_tagctrl_top.sv`.
     parameter axi_tagctrl_pkg::tagctrl_cfg_t Cfg = axi_tagctrl_pkg::tagctrl_cfg_t'{default: '0},
+    /// tag bits per flit exchanged with tag lookup engine.
+    parameter int unsigned TagFlitBits = 4,
     /// AXI Tag Controller descriptor type definition,
     parameter type desc_t = logic,
     /// AXI master port Ax channel type definition.
@@ -72,14 +74,15 @@ module axi_tagctrl_ax #(
 
   // Register to hold incoming AXI transaction
   ax_chan_t slv_chan_d, slv_chan_q;
+  logic slv_illegal_d, slv_illegal_q;
   logic slv_chan_valid_d, slv_chan_valid_q;
   logic load_slv_chan, load_slv_chan_valid;
 
   // Auxiliary signals
   // Tag address offset to fetch
   axi_addr_t tag_addr;
-  // End of the access
-  axi_addr_t addr_end;
+  // last address of the access
+  axi_addr_t addr_last;
   // Whether the request attempts to directly access tags
   logic illegal_req;
   // Whether request is in the covered region
@@ -91,16 +94,21 @@ module axi_tagctrl_ax #(
   assign tagc_desc_o = tagc_desc_q;
   assign tagc_valid_o = tagc_desc_valid_q;
   assign ax_mem_chan_mst_o = slv_chan_q;
-  assign ax_mem_chan_valid_o = slv_chan_valid_q && !illegal_req;
+  assign ax_mem_chan_valid_o = slv_chan_valid_q && !slv_illegal_q;
   assign ax_chan_ready_o = ~slv_chan_valid_q && ~tagc_desc_valid_q && ~tagctrl_desc_valid_q;
   assign tag_addr = $unsigned(ax_chan_slv_i.addr - covered_base_addr_i) >> $clog2(Cfg.CapSize / 8);
   assign tagged_req = !ignore_tags_i
                       && ax_chan_slv_i.addr >= covered_base_addr_i
                       && ax_chan_slv_i.addr  <  covered_top_addr_i;
-  assign addr_end = ax_chan_slv_i.addr + (axi_addr_t'(1 + ax_chan_slv_i.len) << ax_chan_slv_i.size);
+  assign addr_last = ax_chan_slv_i.addr + (axi_addr_t'(1 + ax_chan_slv_i.len) << ax_chan_slv_i.size) - 1;
+  localparam int unsigned FlitSpanBytes = TagFlitBits * (Cfg.CapSize / 8);
+  localparam int unsigned lo = $clog2(FlitSpanBytes);
+  logic crosses_flit;
+  assign crosses_flit = ax_chan_slv_i.addr[$bits(axi_addr_t)-1:lo] != addr_last[$bits(axi_addr_t)-1:lo];
   assign illegal_req = !ignore_tags_i
-                      && ax_chan_slv_i.addr < tag_store_top_addr_i
-                      && addr_end > tag_store_base_addr_i;
+                      && ((ax_chan_slv_i.addr < tag_store_top_addr_i
+                           && addr_last >= tag_store_base_addr_i)
+                          || (tagged_req && crosses_flit));
   // Note: testing the start address of the access (as opposed to the end)
   // against covered_top_addr_i is sufficient as AXI accesses are at most 4K
   // and covered_top_addr_i is at worst 8K aligned (or a config error is raised)
@@ -108,13 +116,14 @@ module axi_tagctrl_ax #(
   always_comb begin : ax_mem_chan_ctrl
     // default assignments
     slv_chan_d = slv_chan_q;
+    slv_illegal_d = slv_illegal_q;
     load_slv_chan = 1'b0;
     slv_chan_valid_d = slv_chan_valid_q;
     load_slv_chan_valid = 1'b0;
 
     if (slv_chan_valid_q) begin
       // send new request transaction
-      if (ax_mem_chan_ready_i || illegal_req) begin
+      if (ax_mem_chan_ready_i || slv_illegal_q) begin
         slv_chan_valid_d = 1'b0;
         load_slv_chan_valid = 1'b1;
       end
@@ -123,6 +132,7 @@ module axi_tagctrl_ax #(
       if (ax_chan_valid_i && ax_chan_ready_o) begin
         slv_chan_d = ax_chan_slv_i;
         slv_chan_d.id = id_mst_t'(axi_tagctrl_pkg::AxReqId);
+        slv_illegal_d = illegal_req;
         load_slv_chan = 1'b1;
         slv_chan_valid_d = 1'b1;
         load_slv_chan_valid = 1'b1;
@@ -162,7 +172,7 @@ module axi_tagctrl_ax #(
             default: '0
         };
         load_tagc_desc = 1'b1;
-        tagc_desc_valid_d = tagged_req;
+        tagc_desc_valid_d = tagged_req && !illegal_req;
         load_tagc_desc_valid = 1'b1;
       end
     end
@@ -194,7 +204,7 @@ module axi_tagctrl_ax #(
             x_last: 1'b1,
             x_resp: illegal_req ? axi_pkg::RESP_DECERR : axi_pkg::RESP_OKAY,
             illegal_req: illegal_req,
-            tagged_req: tagged_req,
+            tagged_req: tagged_req && !illegal_req,
             default: '0
         };
         load_tagctrl_desc = 1'b1;
@@ -206,6 +216,7 @@ module axi_tagctrl_ax #(
 
   // Registers
   `FFLARN(slv_chan_q, slv_chan_d, load_slv_chan, ax_chan_t'{default: '0}, clk_i, rst_ni)
+  `FFLARN(slv_illegal_q, slv_illegal_d, load_slv_chan, 1'b0, clk_i, rst_ni)
   `FFLARN(slv_chan_valid_q, slv_chan_valid_d, load_slv_chan_valid, 1'b0, clk_i, rst_ni)
   `FFLARN(tagc_desc_q, tagc_desc_d, load_tagc_desc, desc_t'{default: '0}, clk_i, rst_ni)
   `FFLARN(tagc_desc_valid_q, tagc_desc_valid_d, load_tagc_desc_valid, 1'b0, clk_i, rst_ni)
