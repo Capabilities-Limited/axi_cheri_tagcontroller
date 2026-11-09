@@ -41,10 +41,10 @@ VCD_DUMP ?= "$(VER_BUILD_DIR)dump.vcd"
 
 #Gtest Setup
 GTEST_GIT := https://github.com/google/googletest.git
-GTEST_BRANCH := v1.10.x
+GTEST_BRANCH := v1.18.0
 GTEST_DIR := $(VER_BUILD_DIR)gtest/
 GTEST_BUILD := $(GTEST_DIR)build/
-GTEST_DEFINES := -DBUILD_GMOCK=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+GTEST_DEFINES := -DBUILD_GMOCK=OFF
 GTEST_LIB := $(GTEST_BUILD)lib/libgtest.a
 
 #Verilator Flags
