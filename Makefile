@@ -44,12 +44,13 @@ GTEST_GIT := https://github.com/google/googletest.git
 GTEST_BRANCH := v1.10.x
 GTEST_DIR := $(VER_BUILD_DIR)gtest/
 GTEST_BUILD := $(GTEST_DIR)build/
-GTEST_DEFINES := -DBUILD_GMOCK=OFF
+GTEST_DEFINES := -DBUILD_GMOCK=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+GTEST_LIB := $(GTEST_BUILD)lib/libgtest.a
 
 #Verilator Flags
 CFLAGS := -I$(RISCV)/include                            \
           -std=c++17                                    \
-	  -I$(GTEST_BUILD)/googletest/include/          \
+	  -I$(GTEST_DIR)googletest/include/             \
           -I$(ROOT_PATH)test/src/inc/                   \
 	  -O3
 	  #-I$(VERILATOR_ROOT)                           \
@@ -140,7 +141,7 @@ waves: $(VCD_DUMP)
 $(VCD_DUMP): verilate
 
 .PHONY:verilate
-verilate:
+verilate: $(GTEST_LIB)
 	@echo $(VER_LOGS_DIR)
 	@echo "<----Building Verilator Model for $(Module)---->"
 	$(verilate_command)
@@ -148,7 +149,7 @@ verilate:
 	@mkdir -p $(VER_LOGS_DIR)
 
 .PHONY:runtests
-runtests: $(VER_BUILD_DIR)V$(MODULE)_testharness.mk
+runtests: verilate
 	@echo
 	@echo "<----Running Tests---->"
 	@$(VER_BUILD_DIR)V$(MODULE)_testharness -v $(VER_LOGS_DIR)
@@ -170,10 +171,16 @@ verible-format:
 
 
 .PHONY:gtest
-gtest:
+gtest: $(GTEST_LIB)
+
+$(GTEST_LIB):
 	@echo
 	@echo "<----Building GTest Framework---->"
-	@mkdir -p $(GTEST_BUILD) && cd $(GTEST_BUILD) && cmake $(GTEST_DIR) $(GTEST_DEFINES) && make
+	@if [ ! -f $(GTEST_DIR)CMakeLists.txt ]; then \
+	  rm -rf $(GTEST_DIR) && \
+	  git clone --depth 1 -b $(GTEST_BRANCH) $(GTEST_GIT) $(GTEST_DIR); \
+	fi
+	@mkdir -p $(GTEST_BUILD) && cd $(GTEST_BUILD) && cmake $(GTEST_DIR) $(GTEST_DEFINES) && $(MAKE)
 	@echo "<----Finish building GTest Framework---->"
 
 $(VER_BUILD_DIR):
