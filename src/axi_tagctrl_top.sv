@@ -572,7 +572,8 @@ module axi_tagctrl_top #(
       .slv_req_i  (slv_req_isolated),
       .slv_resp_o (slv_resp_isolated),
       .mst_req_o  (slv_req_ordered),
-      .mst_resp_i (slv_resp_ordered)
+      .mst_resp_i (slv_resp_ordered),
+      .backpressure_o (/* not used */)
   );
 
   // Limit the outstanding transactions and read data flits forwarded to the tag controller.
