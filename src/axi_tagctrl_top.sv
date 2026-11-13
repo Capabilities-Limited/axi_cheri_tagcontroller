@@ -9,8 +9,10 @@
 
 module axi_tagctrl_top #(
     parameter int unsigned grouping_factor = 256,
+    parameter int unsigned root_flit_bits = 4,
     parameter int unsigned root_cache_ways = 4,
     parameter int unsigned root_cache_byte_size = 2048,
+    parameter int unsigned leaf_flit_bits = 4,
     parameter int unsigned leaf_cache_ways = 4,
     parameter int unsigned leaf_cache_byte_size = 16384,
     parameter int unsigned tagged_chunk_size = 16,
@@ -34,8 +36,12 @@ module axi_tagctrl_top #(
     parameter int unsigned perf_counters = 0,
     /// Capability size in memory
     parameter int unsigned cap_size = 128,
-    /// Maximum concurrent AXI transactions on both ports
-    parameter int unsigned max_trans = 10,
+    /// Maximum concurrent AXI transactions on both ports; also the maximum number of outstanding
+    /// read and write transactions (each) forwarded to the tag controller
+    parameter int unsigned max_trans = 16,
+    /// Maximum outstanding read data flits (R beats) forwarded to the tag controller.
+    /// 256 is the longest AXI4 burst, so a burst of any length can be forwarded.
+    parameter int unsigned max_outstanding_r_flits = 256,
     /// AXI4+ATOP ID field width of the slave port.
     /// The ID field width of the master port is this parameter + 1.
     parameter int unsigned axi_id_width = 32'd6,
@@ -82,6 +88,7 @@ module axi_tagctrl_top #(
     input mst_resp_t untagged_mgr_resp_i
 );
   `include "axi/typedef.svh"
+  `include "axi_tagctrl/typedef.svh"
 
   typedef logic [axi_id_width-1:0] axi_slv_id_t;
   typedef logic [axi_id_width:0] axi_mst_id_t;
@@ -103,11 +110,12 @@ module axi_tagctrl_top #(
 '{
       AxiIdWidth: axi_id_width,
       AxiAddrWidth: axi_addr_width,
-      AxiDataWidth: axi_data_width,
       CapSize: cap_size,
       TagWFifoDepth: 4,
       TagAXFifoDepth: 4,
-      TagRFifoDepth: 32
+      // Hold every R flit that can be outstanding (see `axi_throttle` below), so that read data
+      // never back-pressures memory while the tag response for the oldest flits is still pending.
+      TagRFifoDepth: max_outstanding_r_flits
   };
 
   typedef struct packed {
@@ -123,21 +131,12 @@ module axi_tagctrl_top #(
     logic illegal_req;  // Request tries to directly access tags
   } desc_t;
 
-  // struct to pass between the tag controller and the tag cache
-  typedef struct packed {
-    axi_data_t data;    // input data
-    axi_data_t bit_en;  // write bit enable
-    axi_strb_t strb;    // write enable (equals AXI strb)
-  } tagc_oup_t;
+  // flit of tags exchanged with the tag lookup engine
+  typedef logic [leaf_flit_bits-1:0] tag_flit_t;
 
-  typedef struct packed {
-    axi_slv_id_t    id;    // AXI id of the count operation
-    axi_data_t      data;  // read data from the way
-    axi_pkg::resp_t resp;
-    logic           last;
-    logic           aborted;
-    logic           hit;
-  } tagc_inp_t;
+  // structs to pass between the tag controller and the tag cache
+  `AXI_TAGCTRL_TYPEDEF_DATA_REQ_T(tagc_oup_t, tag_flit_t)
+  `AXI_TAGCTRL_TYPEDEF_READ_RESP_T(tagc_inp_t, axi_slv_id_t, tag_flit_t)
 
   // R tag bits payload between the tag cache and tag controller
   tagc_inp_t tagc_r_inp;
@@ -259,8 +258,10 @@ module axi_tagctrl_top #(
     .mem_resp_t(slv_resp_t),
     .axi_addr_t(axi_addr_t),
     .GROUPING_FACTOR(grouping_factor),
+    .ROOT_FLIT_BITS(root_flit_bits),
     .ROOT_CACHE_WAYS(root_cache_ways),
     .ROOT_CACHE_BYTE_SIZE(root_cache_byte_size),
+    .LEAF_FLIT_BITS(leaf_flit_bits),
     .LEAF_CACHE_WAYS(leaf_cache_ways),
     .LEAF_CACHE_BYTE_SIZE(leaf_cache_byte_size)
   ) i_tag_lookup_engine (
@@ -308,10 +309,11 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg       (Cfg),
-      .desc_t    (desc_t),
-      .ax_chan_t (slv_ar_chan_t),
-      .axi_addr_t(axi_addr_t)
+      .Cfg        (Cfg),
+      .TagFlitBits(leaf_flit_bits),
+      .desc_t     (desc_t),
+      .ax_chan_t  (slv_ar_chan_t),
+      .axi_addr_t (axi_addr_t)
   ) axi_tag_ctrl_ar (
       .clk_i,
       .rst_ni,
@@ -380,10 +382,11 @@ module axi_tagctrl_top #(
   //--------------------------------//
 
   axi_tagctrl_ax #(
-      .Cfg       (Cfg),
-      .desc_t    (desc_t),
-      .ax_chan_t (slv_aw_chan_t),
-      .axi_addr_t(axi_addr_t)
+      .Cfg        (Cfg),
+      .TagFlitBits(leaf_flit_bits),
+      .desc_t     (desc_t),
+      .ax_chan_t  (slv_aw_chan_t),
+      .axi_addr_t (axi_addr_t)
   ) axi_tag_ctrl_aw (
       .clk_i,
       .rst_ni,
@@ -513,8 +516,8 @@ module axi_tagctrl_top #(
       .mst_resp_i (untagged_mgr_resp_i)
   );
 
-  slv_req_t  slv_req_cut;
-  slv_resp_t slv_resp_cut;
+  slv_req_t  slv_req_cut,  slv_req_isolated;
+  slv_resp_t slv_resp_cut, slv_resp_isolated;
 
   axi_cut #(
       // AXI channel structs
@@ -543,10 +546,58 @@ module axi_tagctrl_top #(
       .rst_ni,
       .slv_req_i  (slv_req_cut),  // Slave port request
       .slv_resp_o (slv_resp_cut), // Slave port response
-      .mst_req_o  (to_tagctrl_req),
-      .mst_resp_i (from_tagctrl_resp),
+      .mst_req_o  (slv_req_isolated),
+      .mst_resp_i (slv_resp_isolated),
       .isolate_i  (isolate),
       .isolated_o (isolated)
+  );
+
+  // Ordering: forward a write only while no overlapping read or write is in flight, and a read
+  // only while no overlapping write is in flight. Overlaps are detected at capability
+  // granularity, as all bytes of a capability share one tag.
+  slv_req_t  slv_req_ordered;
+  slv_resp_t slv_resp_ordered;
+
+  axi_hazard_filter #(
+      .MaxReadTxns  (max_trans),
+      .MaxWriteTxns (max_trans),
+      .AxiIdWidth   (axi_id_width),
+      .AxiAddrWidth (axi_addr_width),
+      .RegionSize   (cap_size / 8),
+      .axi_req_t    (slv_req_t),
+      .axi_resp_t   (slv_resp_t)
+  ) i_axi_hazard_filter (
+      .clk_i,
+      .rst_ni,
+      .slv_req_i  (slv_req_isolated),
+      .slv_resp_o (slv_resp_isolated),
+      .mst_req_o  (slv_req_ordered),
+      .mst_resp_i (slv_resp_ordered),
+      .backpressure_o (/* not used */)
+  );
+
+  // Limit the outstanding transactions and read data flits forwarded to the tag controller.
+  // `stream_throttle` can only express a credit of `MaxNum*Pending - 1`, hence the `+ 1`.
+  localparam int unsigned ThrottleMaxTxns = max_trans + 1;
+  localparam int unsigned ThrottleCntWidth = cf_math_pkg::idx_width(ThrottleMaxTxns);
+  localparam int unsigned ThrottleRFlitCntWidth = cf_math_pkg::idx_width(max_outstanding_r_flits + 1);
+
+  axi_throttle #(
+      .MaxNumAwPending     (ThrottleMaxTxns),
+      .MaxNumArPending     (ThrottleMaxTxns),
+      .axi_req_t           (slv_req_t),
+      .axi_rsp_t           (slv_resp_t),
+      .MaxNumRBeatsPending (max_outstanding_r_flits)
+  ) i_axi_throttle (
+      .clk_i,
+      .rst_ni,
+      .req_i           (slv_req_ordered),
+      .rsp_o           (slv_resp_ordered),
+      .req_o           (to_tagctrl_req),
+      .rsp_i           (from_tagctrl_resp),
+      .w_credit_i      (ThrottleCntWidth'(max_trans)),
+      .r_credit_i      (ThrottleCntWidth'(max_trans)),
+      .r_beat_credit_i (ThrottleRFlitCntWidth'(max_outstanding_r_flits))
   );
 
   // pragma translate_off

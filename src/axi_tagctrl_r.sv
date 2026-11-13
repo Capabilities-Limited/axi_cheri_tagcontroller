@@ -59,6 +59,7 @@ module axi_tagctrl_r #(
       state_d, state_q;
   // AXI tag cache channel signals
   tagc_inp_t tagc_inp_r_d, tagc_inp_r_q;
+  localparam int unsigned TagFlitBits = $bits(tagc_inp_r_q.data);
   logic tagc_inp_r_valid_d, tagc_inp_r_valid_q;
   logic load_tags, load_tags_valid;
   // MEM FIFO control signals
@@ -70,13 +71,13 @@ module axi_tagctrl_r #(
   r_chan_t mem_fifo_indata;
   // auxiliary signals
   // Tag index bit (indicates if we are reading from a valid capability or not)
-  logic [$clog2(Cfg.AxiDataWidth)-1:0] tag_bit_ind;
+  logic [$clog2(TagFlitBits)-1:0] tag_bit_ind;
 
   // AXI Slave R port channel assignments
   // AXI Master R port channel assignments
   assign r_chan_ready_o = !mem_fifo_full;
   // Decode tag bit index based on the address
-  assign tag_bit_ind = tagctrl_desc_q.a_x_addr[$clog2(Cfg.CapSize/8)+:$clog2(Cfg.AxiDataWidth)];
+  assign tag_bit_ind = tagctrl_desc_q.a_x_addr[$clog2(Cfg.CapSize/8)+:$clog2(TagFlitBits)];
 
   always_comb begin : r_chan_ctrl
     // registers default values
@@ -97,8 +98,7 @@ module axi_tagctrl_r #(
 
     case (state_q)
       IDLE: begin
-        load_new_desc();
-        get_tags();
+        load_new_desc_and_tags();
       end
       SEND_R_CHANNEL: begin
         // To track number of response flits, decrement the a_x_len field.
@@ -137,14 +137,13 @@ module axi_tagctrl_r #(
             r_chan_slv_o.user = '0;
           end
           // load more tags if needed
-          if ((tag_bit_ind == (Cfg.AxiDataWidth - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
+          if ((tag_bit_ind == (TagFlitBits - 1) && tagctrl_desc_d.a_x_addr[0+:$clog2(
                   Cfg.CapSize/8
-              )] == 0) && !last && r_chan_slv_ready_i) begin
+              )] == 0) && !last && r_chan_slv_ready_i && !tagctrl_desc_q.illegal_req) begin
             get_tags();
           end
           if (last && r_chan_slv_ready_i) begin
-            load_new_desc();
-            get_tags();
+            load_new_desc_and_tags();
           end
         end
         if (!tagc_inp_r_valid_q) begin
@@ -170,8 +169,8 @@ module axi_tagctrl_r #(
       mem_fifo_indata = r_chan_mst_i;
     end
   end
-  // this function loads a new descriptor from the `axi_tagctrl_ax.sv` unit
-  function automatic void load_new_desc();
+  // load request descriptor and associated tag bits if needed
+  function automatic void load_new_desc_and_tags();
     tagctrl_desc_ready_o = 1'b1;
     state_d = IDLE;
     // new descriptor at the input
@@ -179,23 +178,28 @@ module axi_tagctrl_r #(
       tagctrl_desc_d = tagctrl_desc_i;
       load_desc = 1'b1;
       state_d = SEND_R_CHANNEL;
+      get_tags();
+    end else begin
+      tagc_inp_r_valid_d = 1'b0;
+      load_tags_valid = 1'b1;
     end
-  endfunction : load_new_desc
+  endfunction : load_new_desc_and_tags
 
-  // this function loads a new descriptor from the `axi_tagctrl_ax.sv` unit
+  // load tags for current request descriptor if it is a tagged request
   function automatic void get_tags();
-    tagc_inp_r_ready_o = 1'b1;
     tagc_inp_r_valid_d = 1'b0;
     load_tags_valid = 1'b1;
-    // new descriptor at the input
     if (!tagctrl_desc_d.tagged_req) begin
       tagc_inp_r_d = '0;
       load_tags = 1'b1;
       tagc_inp_r_valid_d = 1'b1;
-    end else if (tagc_inp_r_valid_i) begin
-      tagc_inp_r_d = tagc_inp_r_i;
-      load_tags = 1'b1;
-      tagc_inp_r_valid_d = 1'b1;
+    end else begin
+      tagc_inp_r_ready_o = 1'b1;
+      if (tagc_inp_r_valid_i) begin
+        tagc_inp_r_d = tagc_inp_r_i;
+        load_tags = 1'b1;
+        tagc_inp_r_valid_d = 1'b1;
+      end
     end
   endfunction : get_tags
 

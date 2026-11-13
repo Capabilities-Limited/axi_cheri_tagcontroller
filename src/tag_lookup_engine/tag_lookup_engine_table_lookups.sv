@@ -1,8 +1,10 @@
 module tag_lookup_engine_table_lookups #(
   parameter type tag_req_t = logic,
-  parameter type tag_data_req_t = logic,
+  parameter type leaf_data_req_t = logic,
+  parameter type root_data_req_t = logic,
   parameter type tag_write_resp_t = logic,
-  parameter type tag_read_resp_t = logic,
+  parameter type leaf_read_resp_t = logic,
+  parameter type root_read_resp_t = logic,
   parameter type axi_addr_t = logic,
   parameter type axi_slv_id_t = logic,
   parameter int unsigned GROUPING_FACTOR = 256,
@@ -23,13 +25,13 @@ module tag_lookup_engine_table_lookups #(
   input  tag_req_t        read_req_i,
   output logic            read_resp_valid_o,
   input  logic            read_resp_ready_i,
-  output tag_read_resp_t  read_resp_o,
+  output leaf_read_resp_t read_resp_o,
   input  logic            write_req_valid_i,
   output logic            write_req_ready_o,
   input  tag_req_t        write_req_i,
   input  logic            write_data_req_valid_i,
   output logic            write_data_req_ready_o,
-  input  tag_data_req_t   write_data_req_i,
+  input  leaf_data_req_t  write_data_req_i,
   output logic            write_resp_valid_o,
   input  logic            write_resp_ready_i,
   output tag_write_resp_t write_resp_o,
@@ -39,14 +41,14 @@ module tag_lookup_engine_table_lookups #(
   output tag_req_t        root_read_req_o[2],
   input  logic            root_read_resp_valid_i[2],
   output logic            root_read_resp_ready_o[2],
-  input  tag_read_resp_t  root_read_resp_i[2],
+  input  root_read_resp_t root_read_resp_i[2],
   output logic            root_write_req_valid_o[2],
   input  logic            root_write_req_ready_i[2],
   output tag_req_t        root_write_req_o[2],
   output logic            root_write_req_flush_o[2],
   output logic            root_write_data_req_valid_o[2],
   input  logic            root_write_data_req_ready_i[2],
-  output tag_data_req_t   root_write_data_req_o[2],
+  output root_data_req_t  root_write_data_req_o[2],
   input  logic            root_write_resp_valid_i[2],
   output logic            root_write_resp_ready_o[2],
   input  tag_write_resp_t root_write_resp_i[2],
@@ -57,14 +59,14 @@ module tag_lookup_engine_table_lookups #(
   output logic            leaf_read_req_speculative_o[2],
   input  logic            leaf_read_resp_valid_i[2],
   output logic            leaf_read_resp_ready_o[2],
-  input  tag_read_resp_t  leaf_read_resp_i[2],
+  input  leaf_read_resp_t leaf_read_resp_i[2],
   output logic            leaf_write_req_valid_o,
   input  logic            leaf_write_req_ready_i,
   output tag_req_t        leaf_write_req_o,
   output logic            leaf_write_req_flush_o,
   output logic            leaf_write_data_req_valid_o,
   input  logic            leaf_write_data_req_ready_i,
-  output tag_data_req_t   leaf_write_data_req_o,
+  output leaf_data_req_t  leaf_write_data_req_o,
   input  logic            leaf_write_resp_valid_i,
   output logic            leaf_write_resp_ready_o,
   input  tag_write_resp_t leaf_write_resp_i,
@@ -90,12 +92,12 @@ module tag_lookup_engine_table_lookups #(
   logic            root_write_req_valid_flushing, root_write_req_valid_lookups;
   tag_req_t        root_write_req_lookups;
   logic            root_write_data_req_valid_flushing, root_write_data_req_valid_lookups;
-  tag_data_req_t   root_write_data_req_lookups;
+  root_data_req_t  root_write_data_req_lookups;
   logic            root_write_resp_ready_flushing, root_write_resp_ready_lookups;
   logic            leaf_write_req_valid_flushing, leaf_write_req_valid_lookups;
   tag_req_t        leaf_write_req_lookups;
   logic            leaf_write_data_req_valid_flushing, leaf_write_data_req_valid_lookups;
-  tag_data_req_t   leaf_write_data_req_lookups;
+  leaf_data_req_t  leaf_write_data_req_lookups;
   logic            leaf_write_resp_ready_flushing, leaf_write_resp_ready_lookups;
 
   assign root_write_req_valid_o[0] = done_flushing_o ? root_write_req_valid_lookups : root_write_req_valid_flushing;
@@ -137,7 +139,7 @@ module tag_lookup_engine_table_lookups #(
   // root table management fsm
   tag_lookup_engine_root_init #(
     .tag_req_t(tag_req_t),
-    .tag_data_req_t(tag_data_req_t),
+    .root_data_req_t(root_data_req_t),
     .tag_write_resp_t(tag_write_resp_t),
     .axi_addr_t(axi_addr_t),
     .BITS_PER_ROOT_FLIT(BITS_PER_ROOT_FLIT)
@@ -161,7 +163,8 @@ module tag_lookup_engine_table_lookups #(
   // tag reads //
   tag_lookup_engine_table_lookups_read #(
     .tag_req_t(tag_req_t),
-    .tag_read_resp_t(tag_read_resp_t),
+    .leaf_read_resp_t(leaf_read_resp_t),
+    .root_read_resp_t(root_read_resp_t),
     .axi_addr_t(axi_addr_t),
     .GROUPING_FACTOR(GROUPING_FACTOR)
   ) i_tag_lookup_engine_table_lookups_read (
@@ -197,9 +200,10 @@ module tag_lookup_engine_table_lookups #(
   // tag writes //
   tag_lookup_engine_table_lookups_write #(
     .tag_req_t(tag_req_t),
-    .tag_data_req_t(tag_data_req_t),
+    .leaf_data_req_t(leaf_data_req_t),
+    .root_data_req_t(root_data_req_t),
+    .root_read_resp_t(root_read_resp_t),
     .tag_write_resp_t(tag_write_resp_t),
-    .tag_read_resp_t(tag_read_resp_t),
     .axi_addr_t(axi_addr_t),
     .axi_slv_id_t(axi_slv_id_t),
     .GROUPING_FACTOR(GROUPING_FACTOR),

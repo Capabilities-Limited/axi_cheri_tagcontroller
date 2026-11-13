@@ -10,6 +10,7 @@ package:
 dependencies:
   hpdcache: { git: "https://github.com/Capabilities-Limited/cv-hpdcache.git", rev: "cva6-zcheri-support" }
   axi: { git: "https://github.com/pulp-platform/axi.git", rev: "697f13ff67153a5243e347f2d1992a125018b6c2" }
+  axi_capltd: { git: "https://github.com/Capabilities-Limited/pulp_axi.git", rev: "7c368c88e09aabc96db4cc4b2497530023b87dc5" }
   common_cells: { git: "https://github.com/pulp-platform/common_cells.git", version: "1.32.0" }
   common_verification: { git: "https://github.com/pulp-platform/common_verification.git", version: "0.2.0" }
   register_interface: { git: "https://github.com/pulp-platform/register_interface.git", version: "0.3.6" }
@@ -20,27 +21,30 @@ sources:
   # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
   # levels 1 and 0, etc. Files within a level are ordered alphabetically.
   # Level 0
-  - src/axi_tagctrl_pkg.sv
-  - src/axi_tagctrl_config.sv
-  - src/tag_lookup_engine/tag_lookup_engine.sv
-  - src/tag_lookup_engine/tag_lookup_engine_root_init.sv
-  - src/tag_lookup_engine/tag_lookup_engine_hpdcache_configs.sv
-  - src/tag_lookup_engine/tag_lookup_engine_hpdcache_wrapper.sv
-  - src/tag_lookup_engine/tag_lookup_engine_hpdcache_read_req_rsp_wrapper.sv
-  - src/tag_lookup_engine/tag_lookup_engine_hpdcache_write_req_rsp_wrapper.sv
+  - include_dirs:
+      - include
+    files:
+      - src/axi_tagctrl_pkg.sv
+      - src/axi_tagctrl_config.sv
+      - src/tag_lookup_engine/tag_lookup_engine.sv
+      - src/tag_lookup_engine/tag_lookup_engine_root_init.sv
+      - src/tag_lookup_engine/tag_lookup_engine_hpdcache_configs.sv
+      - src/tag_lookup_engine/tag_lookup_engine_hpdcache_wrapper.sv
+      - src/tag_lookup_engine/tag_lookup_engine_hpdcache_read_req_rsp_wrapper.sv
+      - src/tag_lookup_engine/tag_lookup_engine_hpdcache_write_req_rsp_wrapper.sv
 
-  - src/tag_lookup_engine/tag_lookup_engine_flushing.sv
-  - src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv
-  - src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv
-  - src/tag_lookup_engine/tag_lookup_engine_table_lookups_write.sv
-  # Level 1
-  - src/axi_tagc_read_unit.sv
-  - src/axi_tagc_write_unit.sv
-  - src/axi_tagctrl_ax.sv
-  - src/axi_tagctrl_r.sv
-  - src/axi_tagctrl_w.sv
-  # Level 2
-  - src/axi_tagctrl_top.sv
+      - src/tag_lookup_engine/tag_lookup_engine_flushing.sv
+      - src/tag_lookup_engine/tag_lookup_engine_table_lookups.sv
+      - src/tag_lookup_engine/tag_lookup_engine_table_lookups_read.sv
+      - src/tag_lookup_engine/tag_lookup_engine_table_lookups_write.sv
+      # Level 1
+      - src/axi_tagc_read_unit.sv
+      - src/axi_tagc_write_unit.sv
+      - src/axi_tagctrl_ax.sv
+      - src/axi_tagctrl_r.sv
+      - src/axi_tagctrl_w.sv
+      # Level 2
+      - src/axi_tagctrl_top.sv
 
 
   - target: tb

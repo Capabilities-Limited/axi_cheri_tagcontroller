@@ -37,10 +37,6 @@ module hpdcache_write_req_rsp_wrapper #(
 
     hpdcache_req_t req;
 
-    localparam int hi = $clog2($bits(wdata.data)) - 1;
-    localparam int lo = $clog2(HPDcacheCfg.reqDataBytes);
-    logic [hi:0] sel = {write_req_i.a_x_addr[hi:lo], {lo{1'b0}}};
-
     // make sure we have a single flit transaction
     assert(desc.a_x_len == 0);
     //assert(desc.x_last == 1'b1); // TODO only check if there is a valid request
@@ -56,10 +52,10 @@ module hpdcache_write_req_rsp_wrapper #(
 
     // prepare hpdcache req
     req.addr_offset = desc.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];
-    req.wdata = wdata.data >> sel;
+    req.wdata = wdata.data;
     req.op = flush ? hpdcache_pkg::HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL : hpdcache_pkg::HPDCACHE_REQ_STORE;
-    req.be = wdata.bit_en >> sel;
-    req.size = 0;
+    req.be = wdata.bit_en;
+    req.size = $clog2(HPDcacheCfg.u.reqWords / 8);
     req.sid = sid_i;
     req.tid = desc.a_x_id;
     req.need_rsp = 1'b1;

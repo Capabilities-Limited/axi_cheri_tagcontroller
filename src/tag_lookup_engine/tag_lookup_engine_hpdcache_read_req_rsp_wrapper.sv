@@ -37,14 +37,11 @@ module hpdcache_read_req_rsp_wrapper #(
   // pulse abort in the cycle after a speculative request is accepted,
   // which is the timing currently required by HPDCache.
   logic abort_pending_q;
-  // remember how to shift read responses based on the address
-  logic [$clog2($bits(read_resp_o.data))-1:0] shifts [(2**$bits(read_req_i.a_x_id))-1:0];
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       abort_pending_q <= 1'b0;
     end else begin
       if (read_req_valid_i && hpdcache_read_req_ready_i) begin
-        shifts[read_req_i.a_x_id] <= read_req_i.a_x_addr;
         last_req_addr_tag_q <= read_req_i.a_x_addr >> HPDcacheCfg.reqOffsetWidth;
         abort_pending_q <= read_req_speculative_i;
       end else begin
@@ -65,7 +62,7 @@ module hpdcache_read_req_rsp_wrapper #(
     req.wdata = 0; // read req, no data
     req.op = hpdcache_pkg::HPDCACHE_REQ_LOAD;
     req.be = 0; // read req, no byte enable
-    req.size = 0;
+    req.size = $clog2(HPDcacheCfg.u.reqWords / 8);
     req.sid = sid_i;
     req.tid = read_req_i.a_x_id;
     req.need_rsp = 1'b1;
@@ -85,12 +82,10 @@ module hpdcache_read_req_rsp_wrapper #(
   end
 
   // convert hpdcache read response to tag controller read response
-  function automatic tag_read_resp_t hpdcache_read_rsp_to_tagctrl_read_rsp( hpdcache_rsp_t rsp
-                                                                          , logic [$clog2($bits(read_resp_o.data))-1:0] shamnt );
+  function automatic tag_read_resp_t hpdcache_read_rsp_to_tagctrl_read_rsp(hpdcache_rsp_t rsp);
     tag_read_resp_t resp;
     resp.id = rsp.tid;
-    shamnt[1:0] = 2'b00;
-    resp.data = rsp.rdata << shamnt;
+    resp.data = rsp.rdata;
     resp.resp = rsp.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     resp.last = 1'b1;
     resp.aborted = rsp.aborted;
@@ -104,7 +99,6 @@ module hpdcache_read_req_rsp_wrapper #(
   assign hpdcache_read_req_valid_o = read_req_valid_i;
 
   assign read_resp_valid_o = hpdcache_read_resp_valid_i;
-  assign read_resp_o = hpdcache_read_rsp_to_tagctrl_read_rsp( hpdcache_read_resp_i
-                                                            , shifts[hpdcache_read_resp_i.tid] );
+  assign read_resp_o = hpdcache_read_rsp_to_tagctrl_read_rsp(hpdcache_read_resp_i);
 
 endmodule
