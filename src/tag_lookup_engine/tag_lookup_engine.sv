@@ -28,7 +28,10 @@ module tag_lookup_engine #(
   parameter int unsigned ROOT_CACHE_BYTE_SIZE = 2048,
   parameter int unsigned LEAF_FLIT_BITS = 4,
   parameter int unsigned LEAF_CACHE_WAYS = 4,
-  parameter int unsigned LEAF_CACHE_BYTE_SIZE = 16384
+  parameter int unsigned LEAF_CACHE_BYTE_SIZE = 16384,
+  // read and write lookup scoreboard entries (must be powers of two)
+  parameter int unsigned READ_MAX_IN_FLIGHT = 4,
+  parameter int unsigned WRITE_MAX_IN_FLIGHT = 4
 ) (
   // Rising-edge clock of all ports.
   input logic clk_i,
@@ -164,7 +167,9 @@ module tag_lookup_engine #(
     .axi_slv_id_t(axi_slv_id_t),
     .GROUPING_FACTOR(GROUPING_FACTOR),
     .BITS_PER_ROOT_FLIT(root_hpdcache_cfg.reqWords * root_hpdcache_cfg.wordWidth),
-    .BITS_PER_LEAF_FLIT(leaf_hpdcache_cfg.reqWords * leaf_hpdcache_cfg.wordWidth)
+    .BITS_PER_LEAF_FLIT(leaf_hpdcache_cfg.reqWords * leaf_hpdcache_cfg.wordWidth),
+    .READ_MAX_IN_FLIGHT(READ_MAX_IN_FLIGHT),
+    .WRITE_MAX_IN_FLIGHT(WRITE_MAX_IN_FLIGHT)
   ) i_tag_lookup_engine_table_lookups (
     .clk_i,
     .rst_ni,

@@ -36,8 +36,8 @@ module axi_tagctrl_top #(
     parameter int unsigned perf_counters = 0,
     /// Capability size in memory
     parameter int unsigned cap_size = 128,
-    /// Maximum concurrent AXI transactions on both ports
-    parameter int unsigned max_trans = 10,
+    /// Maximum concurrent AXI transactions through this module.
+    parameter int unsigned max_trans = 8,
     /// AXI4+ATOP ID field width of the slave port.
     /// The ID field width of the master port is this parameter + 1.
     parameter int unsigned axi_id_width = 32'd6,
@@ -102,14 +102,22 @@ module axi_tagctrl_top #(
   `AXI_TYPEDEF_R_CHAN_T(slv_r_chan_t, axi_data_t, axi_slv_id_t, axi_user_t)
   `AXI_TYPEDEF_R_CHAN_T(mst_r_chan_t, axi_data_t, axi_mst_id_t, axi_user_t)
 
+  localparam int unsigned TypicalDataLineBytes = 64; // likely size of data lines.
+  localparam int unsigned TypicalDataLineBeats = TypicalDataLineBytes / (axi_data_width / 8);
+  // Lookup engine scoreboards hold a lookup until its response is consumed, so they
+  // cover every transaction but the one being served by axi_tagctrl_r: max_trans - 1,
+  // as a power of two (the scoreboard pointers wrap naturally).
+  localparam int unsigned TagLookupsInFlight = 2 ** $clog2(max_trans - 1);
+
   localparam axi_tagctrl_pkg::tagctrl_cfg_t Cfg = axi_tagctrl_pkg::tagctrl_cfg_t
 '{
       AxiIdWidth: axi_id_width,
       AxiAddrWidth: axi_addr_width,
       CapSize: cap_size,
-      TagWFifoDepth: 4,
-      TagAXFifoDepth: 4,
-      TagRFifoDepth: 32
+      TagWFifoDepth: TypicalDataLineBeats,
+      TagAXFifoDepth: max_trans - 2,
+      TagRFifoDepth: max_trans * TypicalDataLineBeats,
+      TagBFifoDepth: max_trans
   };
 
   typedef struct packed {
@@ -257,7 +265,9 @@ module axi_tagctrl_top #(
     .ROOT_CACHE_BYTE_SIZE(root_cache_byte_size),
     .LEAF_FLIT_BITS(leaf_flit_bits),
     .LEAF_CACHE_WAYS(leaf_cache_ways),
-    .LEAF_CACHE_BYTE_SIZE(leaf_cache_byte_size)
+    .LEAF_CACHE_BYTE_SIZE(leaf_cache_byte_size),
+    .READ_MAX_IN_FLIGHT(TagLookupsInFlight),
+    .WRITE_MAX_IN_FLIGHT(TagLookupsInFlight)
   ) i_tag_lookup_engine (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
@@ -330,7 +340,7 @@ module axi_tagctrl_top #(
       .tagctrl_ready_i       (tagctrl_ar_ready)
   );
 
-  // FIFO between AR master and R master, there can be DEPTH inflight transactions
+  // FIFO between AR master and R master, allows DEPTH+2 (= max_trans) inflight transactions
   stream_fifo #(
       .FALL_THROUGH(1'b1),
       .DEPTH       (Cfg.TagAXFifoDepth),
@@ -403,10 +413,10 @@ module axi_tagctrl_top #(
       .tagctrl_ready_i       (tagctrl_aw_ready)
   );
 
-  // FIFO between AW master and W master, there can be DEPTH inflight transactions
+  // FIFO between AW master and W master, allows DEPTH+2 (= max_trans) inflight transactions
   stream_fifo #(
       .FALL_THROUGH(1'b1),
-      .DEPTH       (Cfg.TagWFifoDepth),
+      .DEPTH       (Cfg.TagAXFifoDepth),
       .T           (desc_t)
   ) i_stream_fifo_w (
       .clk_i,
@@ -425,7 +435,7 @@ module axi_tagctrl_top #(
   // FIFO between tag B slave and tagctrl B master
   stream_fifo #(
       .FALL_THROUGH(1'b1),
-      .DEPTH       (Cfg.TagWFifoDepth),
+      .DEPTH       (Cfg.TagBFifoDepth),
       .T           (slv_b_chan_t)
   ) i_stream_fifo_tagc_b (
       .clk_i,
@@ -561,6 +571,12 @@ module axi_tagctrl_top #(
     assert_axi_user_width :
     assert (axi_user_width > 32'd0)
     else $fatal(1, "Parameter `axi_user_width` has to be > 0!");
+    assert_max_trans :
+    assert (max_trans >= 3)
+    else $fatal(1, "Parameter `max_trans` has to be >= 3 (2 descriptor registers + >=1 FIFO entry)!");
+    assert_tag_line_bytes :
+    assert (TypicalDataLineBeats >= 1 && TypicalDataLineBytes % (axi_data_width / 8) == 0)
+    else $fatal(1, "`TypicalDataLineBytes` has to be a multiple of the AXI data width in bytes!");
 
     // check the structs against the Cfg
     assert_slv_aw_id :

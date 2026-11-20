@@ -206,7 +206,7 @@ module axi_tagctrl_r #(
   // FIFO holds R beats from mem
   fifo_v3 #(
       .FALL_THROUGH(1'b0),               // FIFO is in fall-through mode
-      .DEPTH       (Cfg.TagRFifoDepth),  // can store up to 8 transactions
+      .DEPTH       (Cfg.TagRFifoDepth),  // R beats buffered from memory
       .dtype       (r_chan_t)
   ) i_r_data_fifo (
       .clk_i     (clk_i),             // Clock

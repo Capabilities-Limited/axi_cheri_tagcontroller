@@ -23,12 +23,14 @@ package axi_tagctrl_pkg;
     int unsigned AxiAddrWidth;
     /// Capability size in memory
     int unsigned CapSize;
-    /// Tag controller write FIFO depth
+    /// Tag controller W data FIFO (towards memory) depth, in beats
     int unsigned TagWFifoDepth;
-    /// Tag controller AX FIFO depth
+    /// Tag controller AR/AW descriptor FIFO depth (in-flight transactions - 2)
     int unsigned TagAXFifoDepth;
-    /// Tag controller read FIFO from memory depth
+    /// Tag controller read FIFO from memory depth, in beats
     int unsigned TagRFifoDepth;
+    /// Tag controller pending-B / tag write flit / tag B FIFO depth, in writes
+    int unsigned TagBFifoDepth;
   } tagctrl_cfg_t;
 
   typedef struct packed {
