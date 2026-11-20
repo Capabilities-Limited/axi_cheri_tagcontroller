@@ -317,7 +317,7 @@ module axi_tagctrl_w #(
   // FIFO holds W beats to send to memory
   fifo_v3 #(
       .FALL_THROUGH(1'b1),               // FIFO is in fall-through mode
-      .DEPTH       (Cfg.TagWFifoDepth),  // can store up to 2 transactions
+      .DEPTH       (Cfg.TagWFifoDepth),  // W beats buffered towards memory
       .dtype       (w_chan_t)
   ) i_w_mem_data_fifo (
       .clk_i     (clk_i),              // Clock
@@ -339,7 +339,7 @@ module axi_tagctrl_w #(
   // FIFO holds W beats to send to the tag cache
   fifo_v3 #(
       .FALL_THROUGH(1'b1),               // FIFO is in fall-through mode
-      .DEPTH       (Cfg.TagWFifoDepth),  // can store up to 2 transactions
+      .DEPTH       (Cfg.TagBFifoDepth),  // one tag flit per in-flight tagged write
       .dtype       (tagc_oup_t)
   ) i_w_tags_data_fifo (
       .clk_i     (clk_i),             // Clock

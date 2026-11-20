@@ -9,7 +9,9 @@ module tag_lookup_engine_table_lookups #(
   parameter type axi_slv_id_t = logic,
   parameter int unsigned GROUPING_FACTOR = 256,
   parameter int unsigned BITS_PER_ROOT_FLIT = 4,
-  parameter int unsigned BITS_PER_LEAF_FLIT = 4
+  parameter int unsigned BITS_PER_LEAF_FLIT = 4,
+  parameter int unsigned READ_MAX_IN_FLIGHT = 4,
+  parameter int unsigned WRITE_MAX_IN_FLIGHT = 4
 ) (
   input logic clk_i,
   input logic rst_ni,
@@ -166,7 +168,8 @@ module tag_lookup_engine_table_lookups #(
     .leaf_read_resp_t(leaf_read_resp_t),
     .root_read_resp_t(root_read_resp_t),
     .axi_addr_t(axi_addr_t),
-    .GROUPING_FACTOR(GROUPING_FACTOR)
+    .GROUPING_FACTOR(GROUPING_FACTOR),
+    .MAX_IN_FLIGHT(READ_MAX_IN_FLIGHT)
   ) i_tag_lookup_engine_table_lookups_read (
     .clk_i,
     .rst_ni,
@@ -208,7 +211,8 @@ module tag_lookup_engine_table_lookups #(
     .axi_slv_id_t(axi_slv_id_t),
     .GROUPING_FACTOR(GROUPING_FACTOR),
     .BITS_PER_ROOT_FLIT(BITS_PER_ROOT_FLIT),
-    .BITS_PER_LEAF_FLIT(BITS_PER_LEAF_FLIT)
+    .BITS_PER_LEAF_FLIT(BITS_PER_LEAF_FLIT),
+    .MAX_IN_FLIGHT(WRITE_MAX_IN_FLIGHT)
   ) i_tag_lookup_engine_table_lookups_write (
     .clk_i(clk_i),
     .rst_ni(rst_ni),

@@ -243,4 +243,15 @@ module tag_lookup_engine_table_lookups_read #(
     end
   end
 
+  // pragma translate_off
+  initial begin : proc_assert_params
+    assert_max_in_flight_pow2 :
+    assert (MAX_IN_FLIGHT >= 2 && 2 ** SB_IDX_W == MAX_IN_FLIGHT)
+    else $fatal(1, "Parameter `MAX_IN_FLIGHT` has to be a power of two >= 2!");
+    assert_sb_idx_fits_id :
+    assert (SB_IDX_W <= $bits(req_i.a_x_id))
+    else $fatal(1, "Scoreboard index does not fit in the tag request ID field!");
+  end
+  // pragma translate_on
+
 endmodule
