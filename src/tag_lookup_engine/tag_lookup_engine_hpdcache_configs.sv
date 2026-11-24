@@ -4,7 +4,8 @@ package lookup_engine_hpdcache_cfg_pkg;
     int unsigned nWays,
     int unsigned byteSize,
     int unsigned reqBits,
-    int unsigned memBits
+    int unsigned memBits,
+    bit eccEn = 1'b0
     );
     hpdcache_pkg::hpdcache_user_cfg_t userCfg;
     localparam int unsigned wordWidth = 1;
@@ -49,8 +50,10 @@ package lookup_engine_hpdcache_cfg_pkg;
     userCfg.lowLatency = 1'b1;
     userCfg.userEn = 1'b0;
     userCfg.capAmoEn = 1'b0;
-    userCfg.eccEn = 1'b0;  /*FIXME add additional CVA6 parameter*/
-    userCfg.eccScrubberEn = 1'b0;  /*FIXME: add additional CVA6 parameter*/
+    //  SECDED error detection and correction in the directory and data SRAMs. Errors that cannot
+    //  be recovered (in dirty lines) are reported in the responses (AXI SLVERR).
+    userCfg.eccEn = eccEn;
+    userCfg.eccScrubberEn = 1'b0;
     return userCfg;
   endfunction
 endpackage

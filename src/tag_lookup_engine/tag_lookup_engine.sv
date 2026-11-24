@@ -31,7 +31,9 @@ module tag_lookup_engine #(
   parameter int unsigned LEAF_CACHE_BYTE_SIZE = 16384,
   // read and write lookup scoreboard entries (must be powers of two)
   parameter int unsigned READ_MAX_IN_FLIGHT = 4,
-  parameter int unsigned WRITE_MAX_IN_FLIGHT = 4
+  parameter int unsigned WRITE_MAX_IN_FLIGHT = 4,
+  // error detection and correction (SECDED ECC) in the root and leaf caches
+  parameter bit ECC_EN = 1'b0
 ) (
   // Rising-edge clock of all ports.
   input logic clk_i,
@@ -121,11 +123,13 @@ module tag_lookup_engine #(
   localparam int unsigned nRootReadPorts = 64'd2;
   localparam int unsigned nRootWritePorts = 64'd2;
   localparam hpdcache_pkg::hpdcache_user_cfg_t root_hpdcache_cfg =
-    make_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts, ROOT_CACHE_WAYS, ROOT_CACHE_BYTE_SIZE, ROOT_FLIT_BITS, AxiDataWidth);
+    make_hpdcache_user_cfg(nRootReadPorts+nRootWritePorts, ROOT_CACHE_WAYS, ROOT_CACHE_BYTE_SIZE, ROOT_FLIT_BITS, AxiDataWidth,
+                           ECC_EN);
   localparam int unsigned nLeafReadPorts = 64'd2;
   localparam int unsigned nLeafWritePorts = 64'd1;
   localparam hpdcache_pkg::hpdcache_user_cfg_t leaf_hpdcache_cfg =
-    make_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts, LEAF_CACHE_WAYS, LEAF_CACHE_BYTE_SIZE, LEAF_FLIT_BITS, AxiDataWidth);
+    make_hpdcache_user_cfg(nLeafReadPorts+nLeafWritePorts, LEAF_CACHE_WAYS, LEAF_CACHE_BYTE_SIZE, LEAF_FLIT_BITS, AxiDataWidth,
+                           ECC_EN);
 
   //////////////////////////////////////////////////////////////////////////////
   // local signals for per table-level accesses (root, leaf)

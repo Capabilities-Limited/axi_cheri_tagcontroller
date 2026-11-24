@@ -34,6 +34,9 @@ module axi_tagctrl_top #(
     parameter logic allow_flush_when_locked = 1'b0,
     /// how many perf counters (0 to disable completely)
     parameter int unsigned perf_counters = 0,
+    /// error detection and correction (SECDED ECC) in the tag caches: uncorrectable errors that
+    /// cannot be recovered are reported in the AXI responses (SLVERR)
+    parameter logic ecc_en = 1'b0,
     /// Capability size in memory
     parameter int unsigned cap_size = 128,
     /// Maximum concurrent AXI transactions through this module.
@@ -267,7 +270,8 @@ module axi_tagctrl_top #(
     .LEAF_CACHE_WAYS(leaf_cache_ways),
     .LEAF_CACHE_BYTE_SIZE(leaf_cache_byte_size),
     .READ_MAX_IN_FLIGHT(TagLookupsInFlight),
-    .WRITE_MAX_IN_FLIGHT(TagLookupsInFlight)
+    .WRITE_MAX_IN_FLIGHT(TagLookupsInFlight),
+    .ECC_EN(ecc_en)
   ) i_tag_lookup_engine (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
