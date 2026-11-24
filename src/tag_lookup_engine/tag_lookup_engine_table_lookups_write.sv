@@ -98,6 +98,8 @@ module tag_lookup_engine_table_lookups_write #(
     logic [FLIT_CNT_W-1:0] leaf_wr_resp_cnt;
     logic leaf_wr_received;
     tag_write_resp_t leaf_wr_resp;
+    // an error was reported by the root read, the root write or a leaf write
+    logic err;
     axi_addr_t root_idx;
     tag_req_t req;
     leaf_data_req_t data;
@@ -167,6 +169,7 @@ module tag_lookup_engine_table_lookups_write #(
       sb_alloc.leaf_wr_resp_cnt = '0;
       sb_alloc.leaf_wr_received = 1'b0;
       sb_alloc.leaf_wr_resp = '0;
+      sb_alloc.err = 1'b0;
       sb_alloc.root_idx = root_idx_i;
       sb_alloc.req = req_i;
       sb_alloc.data = data_i;
@@ -207,6 +210,16 @@ module tag_lookup_engine_table_lookups_write #(
       sb_d[resp_idx].root_rd_received = root_rd_received[resp_idx];
 
       root_is_one[resp_idx] = root_rd_resp_i.data[bit_idx];
+      // On an error (e.g. an uncorrectable ECC error in the root cache), whether the leaf exists
+      // is unknown: never leave a stale tag set. A write that clears tags assumes that the leaf
+      // exists and clears them in the leaf (if the leaf does not exist, its line is zeroed when
+      // the leaf is created). A write that sets a tag assumes that the leaf does not exist and
+      // writes a zeroed leaf line (which may only clear tags of the other capabilities of the
+      // line). The error is reported in the write response.
+      if (root_rd_resp_i.resp != axi_pkg::RESP_OKAY) begin
+        root_is_one[resp_idx] = !sb_r[resp_idx].write_is_nonzero;
+        sb_d[resp_idx].err = 1'b1;
+      end
       sb_d[resp_idx].root_is_one = root_is_one[resp_idx];
       // set the flit count for leaf writes
       // detect if synthesizing a line of zeroes is necessary
@@ -265,6 +278,7 @@ module tag_lookup_engine_table_lookups_write #(
     if (root_resp_valid_i) begin
       automatic logic [SB_IDX_W-1:0] resp_idx = root_resp_i.id[SB_IDX_W-1:0];
       sb_d[resp_idx].root_wr_received = 1'b1;
+      if (root_resp_i.resp != axi_pkg::RESP_OKAY) sb_d[resp_idx].err = 1'b1;
     end
 
     // leaf writes //
@@ -344,6 +358,7 @@ module tag_lookup_engine_table_lookups_write #(
     if (leaf_resp_valid_i) begin
       automatic logic [SB_IDX_W-1:0] resp_idx = leaf_resp_i.id[SB_IDX_W-1:0];
       sb_d[resp_idx].leaf_wr_resp = leaf_resp_i;
+      if (leaf_resp_i.resp != axi_pkg::RESP_OKAY) sb_d[resp_idx].err = 1'b1;
       sb_d[resp_idx].leaf_wr_resp_cnt = sb_r[resp_idx].leaf_wr_resp_cnt + 1;
       //if (sb_q[resp_idx].leaf_wr_resp_cnt == (leaf_wr_synth_zero_line[resp_idx] ? LEAF_FLITS - 1 : 0)) begin
       if (sb_q[resp_idx].leaf_wr_resp_cnt == (sb_r[resp_idx].leaf_wr_synth_zero_line ? LEAF_FLITS - 1 : 0)) begin
@@ -370,6 +385,7 @@ module tag_lookup_engine_table_lookups_write #(
         resp_valid_o = 1'b1;
         resp_o = curr_sb.leaf_wr_resp;
         resp_o.id = curr_sb.req.a_x_id;
+        if (curr_sb.err && (resp_o.resp == axi_pkg::RESP_OKAY)) resp_o.resp = axi_pkg::RESP_SLVERR;
 
         if (resp_ready_i) begin
           sb_d[retire_ptr_q].allocated = 1'b0;
