@@ -140,9 +140,11 @@ module tag_lookup_engine_table_lookups_read #(
     for (int unsigned i = 0; i < MAX_IN_FLIGHT; i++) begin
       automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
       root_has_leaf = sb_r[idx].root_received &&
-                      sb_r[idx].root_resp.data[sb_r[idx].root_idx[ROOT_DATA_IDX_W-1:0]];
+                      sb_r[idx].root_resp.data[sb_r[idx].root_idx[ROOT_DATA_IDX_W-1:0]] &&
+                      root_ok(sb_r[idx].root_resp);
       retry_needed = sb_r[idx].allocated && root_has_leaf && sb_r[idx].leaf_received &&
-                     !sb_r[idx].leaf_resp.hit && !sb_r[idx].leaf_retry_sent;
+                     !sb_r[idx].leaf_resp.hit && leaf_ok(sb_r[idx].leaf_resp) &&
+                     !sb_r[idx].leaf_retry_sent;
       if (retry_needed) begin
         leaf_req_valid_o = 1'b1;
         leaf_req_o = sb_r[idx].req_payload;
@@ -165,7 +167,8 @@ module tag_lookup_engine_table_lookups_read #(
         automatic logic [SB_IDX_W-1:0] idx = retire_ptr_q + i;
         if (sb_r[idx].allocated && !sb_r[idx].leaf_sent) begin
           root_has_leaf = sb_r[idx].root_received &&
-                          sb_r[idx].root_resp.data[sb_r[idx].root_idx[ROOT_DATA_IDX_W-1:0]];
+                          sb_r[idx].root_resp.data[sb_r[idx].root_idx[ROOT_DATA_IDX_W-1:0]] &&
+                          root_ok(sb_r[idx].root_resp);
           if (!sb_r[idx].root_received || root_has_leaf) begin
             leaf_req_valid_o = 1'b1;
             leaf_req_o = sb_r[idx].req_payload;
@@ -207,9 +210,11 @@ module tag_lookup_engine_table_lookups_read #(
     if (sb_r[retire_ptr_q].allocated) begin
       if (sb_r[retire_ptr_q].root_received) begin
         root_has_leaf = sb_r[retire_ptr_q].root_resp.data[
-                          sb_r[retire_ptr_q].root_idx[ROOT_DATA_IDX_W-1:0]];
+                          sb_r[retire_ptr_q].root_idx[ROOT_DATA_IDX_W-1:0]] &&
+                        root_ok(sb_r[retire_ptr_q].root_resp);
         if ((!root_has_leaf && !sb_r[retire_ptr_q].leaf_sent) || sb_r[retire_ptr_q].leaf_received) begin
           retry_needed = root_has_leaf && !sb_r[retire_ptr_q].leaf_resp.hit &&
+                         leaf_ok(sb_r[retire_ptr_q].leaf_resp) &&
                          !sb_r[retire_ptr_q].leaf_retry_sent;
 
           if (!retry_needed) begin
@@ -242,6 +247,18 @@ module tag_lookup_engine_table_lookups_read #(
       end
     end
   end
+
+  // A root or leaf response with an error (e.g. an uncorrectable ECC error in the tag caches) is
+  // final: a root response with an error has no valid "has leaf" information, so no leaf lookup
+  // is done and the error is returned, and a leaf response with an error is not retried (a retry
+  // could hide the error, e.g. if the line holding the tags was dropped).
+  function automatic logic root_ok(root_read_resp_t r);
+    return r.resp == axi_pkg::RESP_OKAY;
+  endfunction
+
+  function automatic logic leaf_ok(leaf_read_resp_t r);
+    return r.resp == axi_pkg::RESP_OKAY;
+  endfunction
 
   // pragma translate_off
   initial begin : proc_assert_params
