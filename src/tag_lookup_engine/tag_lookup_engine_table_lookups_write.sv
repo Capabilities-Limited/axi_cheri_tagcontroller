@@ -97,7 +97,7 @@ module tag_lookup_engine_table_lookups_write #(
     logic [FLIT_CNT_W-1:0] leaf_wr_data_flit_cnt;
     logic [FLIT_CNT_W-1:0] leaf_wr_resp_cnt;
     logic leaf_wr_received;
-    logic leaf_wr_resp;
+    tag_write_resp_t leaf_wr_resp;
     axi_addr_t root_idx;
     tag_req_t req;
     leaf_data_req_t data;
@@ -166,6 +166,7 @@ module tag_lookup_engine_table_lookups_write #(
       sb_alloc.leaf_wr_data_flit_cnt = '0;
       sb_alloc.leaf_wr_resp_cnt = '0;
       sb_alloc.leaf_wr_received = 1'b0;
+      sb_alloc.leaf_wr_resp = '0;
       sb_alloc.root_idx = root_idx_i;
       sb_alloc.req = req_i;
       sb_alloc.data = data_i;
