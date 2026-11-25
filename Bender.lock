@@ -29,7 +29,7 @@ packages:
       Git: https://github.com/pulp-platform/common_verification.git
     dependencies: []
   hpdcache:
-    revision: bf553193db40f6e03599d280e171113faadc9542
+    revision: 6f2e154c1affa4ef0edf3d055928428ad62056f7
     version: null
     source:
       Git: https://github.com/Capabilities-Limited/cv-hpdcache.git
