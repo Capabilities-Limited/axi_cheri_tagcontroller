@@ -50,12 +50,16 @@ module hpdcache_read_req_rsp_wrapper #(
     end
   end
 
+`ifndef SYNTHESIS
+  // make sure valid requests are single flit transactions
+  assert property (@(posedge clk_i) disable iff (!rst_ni)
+      read_req_valid_i |-> read_req_i.a_x_len == 0)
+    else $error("TagController HPDCache read requests must be single flit. len: %d", read_req_i.a_x_len);
+`endif
+
   always_comb begin
 
     automatic hpdcache_req_t req;
-    // make sure we have a single flit transaction
-    assert(read_req_i.a_x_len == 0);
-    //assert(read_req_i.x_last == 1'b1);
 
     // prepare hpdcache req
     req.addr_offset = read_req_i.a_x_addr[0 +: HPDcacheCfg.reqOffsetWidth];

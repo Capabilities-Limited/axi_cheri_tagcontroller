@@ -37,9 +37,7 @@ module hpdcache_write_req_rsp_wrapper #(
 
     hpdcache_req_t req;
 
-    // make sure we have a single flit transaction
-    assert(desc.a_x_len == 0);
-    //assert(desc.x_last == 1'b1); // TODO only check if there is a valid request
+    // gen_single_flit_check makes sure we have a single flit transaction
     // TODO check remaining descriptor fields
     //axi_pkg::burst_t a_x_burst;  // AXI burst type
     //logic a_x_lock;  // AXI lock signal
@@ -77,6 +75,13 @@ module hpdcache_write_req_rsp_wrapper #(
   endfunction
 
   logic write_req_valid;
+`ifndef SYNTHESIS
+  // make sure valid requests are single flit transactions
+  assert property (@(posedge clk_i) disable iff (!rst_ni)
+      write_req_valid_i |-> write_req_i.a_x_len == 0)
+    else $error("TagController HPDCache write requests must be single flit. len: %d", write_req_i.a_x_len);
+`endif
+
   assign write_req_valid = write_req_valid_i & write_data_req_valid_i;
   assign write_req_ready_o = write_req_valid && hpdcache_write_req_ready_i;
   assign write_data_req_ready_o = write_req_valid && hpdcache_write_req_ready_i;
