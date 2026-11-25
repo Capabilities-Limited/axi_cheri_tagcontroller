@@ -146,11 +146,8 @@ module hpdcache_wrapper #(
   function automatic hpdcache_mem_req_w_t mem_req_w_bit_2_byte(hpdcache_mem_req_bit_w_t req);
     hpdcache_mem_req_w_t ret;
     localparam int unsigned ratio = $bits(req.mem_req_w_be) / $bits(ret.mem_req_w_be);
-    for (int unsigned i = 0; i < ratio; i++) begin
-      assert (^(req.mem_req_w_be[i*ratio +: ratio]) == 0) else begin
-        $display("TagController HPDCache must produce bit enables that can be expressed as byte enables. %x", req.mem_req_w_be);
-        $error("Exiting.");
-      end
+    // One byte enable per ratio bit enables; gen_w_be_check asserts that they agree.
+    for (int unsigned i = 0; i < $bits(ret.mem_req_w_be); i++) begin
       ret.mem_req_w_be[i] = req.mem_req_w_be[i*ratio];
     end
     ret.mem_req_w_data = req.mem_req_w_data;
@@ -158,6 +155,20 @@ module hpdcache_wrapper #(
     ret.mem_req_w_user = req.mem_req_w_user;
     return ret;
   endfunction
+
+`ifndef SYNTHESIS
+  // The bit enables of each byte of valid write data must be all set or all
+  // clear, so that they can be expressed as byte enables.
+  localparam int unsigned BitsPerByteEn = $bits(hpdcache_mem_bit_en_t) / $bits(hpdcache_mem_be_t);
+  for (genvar i = 0; i < $bits(hpdcache_mem_be_t); i++) begin : gen_w_be_check
+    assert property (@(posedge clk_i) disable iff (!rst_ni)
+        mem_req_write_data_valid |->
+          mem_req_write_data.mem_req_w_be[i*BitsPerByteEn +: BitsPerByteEn]
+            inside {{BitsPerByteEn{1'b0}}, {BitsPerByteEn{1'b1}}})
+      else $error("TagController HPDCache must produce bit enables that can be expressed as byte enables. %x",
+                  mem_req_write_data.mem_req_w_be);
+  end
+`endif
 
   hpdcache_mem_to_axi_read #(
     .hpdcache_mem_req_t(hpdcache_mem_req_t),
