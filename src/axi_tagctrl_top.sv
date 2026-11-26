@@ -9,7 +9,9 @@
 
 module axi_tagctrl_top #(
     parameter int unsigned grouping_factor = 256,
-    parameter int unsigned root_flit_bits = 4,
+    // Tag bits per root flit: a whole AXI data word, so that initialisation writes whole
+    // rows of the root cache (single ECC codewords) rather than merging into them.
+    parameter int unsigned root_flit_bits = 64,
     parameter int unsigned root_cache_ways = 4,
     parameter int unsigned root_cache_byte_size = 2048,
     parameter int unsigned leaf_flit_bits = 4,

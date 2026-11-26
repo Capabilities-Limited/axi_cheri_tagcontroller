@@ -55,7 +55,10 @@ module hpdcache_write_req_rsp_wrapper #(
     req.wdata = wdata.data;
     req.op = flush ? hpdcache_pkg::HPDCACHE_REQ_CMO_FLUSH_INVAL_ALL : hpdcache_pkg::HPDCACHE_REQ_STORE;
     req.be = wdata.bit_en;
-    req.size = $clog2(HPDcacheCfg.u.reqWords / 8);
+    // Only a write of the whole request is full-size. A narrower one (the bit of a lookup
+    // write in a wide flit) is the smallest size, so that the cache merges it into the old
+    // data rather than computing ECC over the request alone.
+    req.size = (&wdata.bit_en) ? $clog2(HPDcacheCfg.u.reqWords / 8) : '0;
     req.sid = sid_i;
     req.tid = desc.a_x_id;
     req.need_rsp = 1'b1;
